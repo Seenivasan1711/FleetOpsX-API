@@ -1,12 +1,22 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
+from sqlalchemy.orm import sessionmaker, Session
+from typing import Generator
 from .config import settings
 
-engine = create_engine(settings.database_url)
-SessionLocal = sessionmaker(bind=engine)
+engine = create_engine(
+    settings.DATABASE_URL,
+    pool_pre_ping=True,
+    future=True,
+)
 
-def get_db():
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine,
+    future=True,
+)
+
+def get_db() -> Generator[Session, None, None]:
     db = SessionLocal()
     try:
         yield db

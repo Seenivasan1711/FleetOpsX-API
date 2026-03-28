@@ -3,13 +3,14 @@ import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
-from app.api import health
-from app.core import config
+from app.core.config import settings
+from app.core.middleware import TenantMiddleware
+from app.api.router import api_router
 
 # Configure Sentry
-if config.SENTRY_DSN:
+if settings.SENTRY_DSN:
     sentry_sdk.init(
-        dsn=config.SENTRY_DSN,
+        dsn=settings.SENTRY_DSN,
         traces_sample_rate=1.0,
         profiles_sample_rate=1.0,
     )
@@ -23,7 +24,7 @@ app = FastAPI(title="FleetOpsX API")
 # Configure Prometheus
 Instrumentator().instrument(app).expose(app)
 
-# Configure CORS
+# Configure CORS (outermost middleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -32,7 +33,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(health.router, tags=["Health"])
+# Tenant middleware (runs after CORS)
+app.add_middleware(TenantMiddleware)
+
+app.include_router(api_router)
 
 @app.on_event("startup")
 async def startup_event():
