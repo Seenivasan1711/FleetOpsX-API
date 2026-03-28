@@ -38,6 +38,9 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-fleetuser}:${POSTGRES_PASSWORD:-fleetpass}@db:5432/${POSTGRES_DB:-fleetopsx}
       REDIS_URL: redis://redis:6379/0
+      # Force watchfiles to use polling so uvicorn --reload works
+      # when source files are on a macOS host mounted into a Linux container
+      WATCHFILES_FORCE_POLLING: "true"
     ports:
       - "8000:8000"
     volumes:
@@ -47,6 +50,7 @@ services:
     build:
       context: ../FleetOpsX-UI
       dockerfile: Dockerfile
+      target: dev
     container_name: fleetopsx-ui
     ports:
       - "5173:5173"

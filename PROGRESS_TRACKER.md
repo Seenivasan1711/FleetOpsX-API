@@ -11,10 +11,10 @@
 
 ```
 Last Updated  : 2026-03-29
-Last Worked On: P1-E5 Web UI – Ops Dashboard ✅
+Last Worked On: P1-E6 Driver View ✅
 Current Phase : Phase 1 – MVP
-Current Epic  : P1-E6 Driver View
-Next Action   : Build DriverView page + backend driver stops endpoint
+Current Epic  : Phase 1 COMPLETE
+Next Action   : Run full demo — seed data → login → generate plan → driver view
 Blocker       : None
 Demo Target   : Phase 1 complete — working end-to-end demo
 Timeline      : 4 weeks
@@ -26,7 +26,7 @@ Timeline      : 4 weeks
 
 | Phase | Name | Status | Milestone |
 |-------|------|--------|-----------|
-| **Phase 1** | MVP – Assisted Dispatch | 🔄 In Progress (6/7 epics done) | Investor + pilot demo ready |
+| **Phase 1** | MVP – Assisted Dispatch | ✅ Done (7/7 epics done) | Investor + pilot demo ready |
 | **Phase 2** | Autonomous Dispatch & Optimization | ⬜ Not Started | Pilot customer live |
 | **Phase 3** | Adaptive Multi-Agent & Learning | ⬜ Not Started | AI moat for Series A |
 | **Phase 4** | Fleet Intelligence Platform | ⬜ Not Started | Enterprise contracts |
@@ -62,7 +62,7 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 | P1-E3-S6 | Auth – JWT Login | ✅ Done | `GENSPEC_P1-E3-S6_auth_v1.md` | — |
 | P1-E4 | Planner v1 (Rule-Based) | ✅ Done | `GENSPEC_P1-E4_planner_v1_v1.md` | — |
 | P1-E5 | Web UI – Ops Dashboard | ✅ Done | `GENSPEC_P1-E5_ops_dashboard_v1.md` | — |
-| P1-E6 | Driver View | ⬜ Not Started | `GENSPEC_P1-E6_driver_view_v1.md` | P1-E4 + P1-E5 Login |
+| P1-E6 | Driver View | ✅ Done | `GENSPEC_P1-E6_driver_view_v1.md` | — |
 | P1-E7 | Synthetic Data & Demo | ✅ Done | `GENSPEC_P1-E7_synthetic_data_v1.md` | — |
 
 ---

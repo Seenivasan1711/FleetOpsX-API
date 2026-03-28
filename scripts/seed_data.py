@@ -216,6 +216,11 @@ def seed(start_date: date, num_days: int = 3):
         db.add(dispatcher_user)
         db.add(driver_user)
 
+        # Link the first driver record to driver@demo.com so /driver/my-stops works
+        if drivers:
+            drivers[0].email = "driver@demo.com"
+            print(f"  ✅ Driver '{drivers[0].full_name}' linked to driver@demo.com")
+
         db.commit()
         print(f"  ✅ {order_count} orders created across {num_days} days")
         print(f"  ✅ Demo users created")
