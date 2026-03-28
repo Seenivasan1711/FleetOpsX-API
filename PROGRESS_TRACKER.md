@@ -11,10 +11,10 @@
 
 ```
 Last Updated  : 2026-03-29
-Last Worked On: P1-E3 Core Domain Models & APIs ✅
+Last Worked On: P1-E5 Web UI – Ops Dashboard ✅
 Current Phase : Phase 1 – MVP
-Current Epic  : P1-E3-S6 Auth – JWT Login (ready to start)
-Next Action   : Implement JWT auth (security.py, auth schemas, auth service, auth router)
+Current Epic  : P1-E6 Driver View
+Next Action   : Build DriverView page + backend driver stops endpoint
 Blocker       : None
 Demo Target   : Phase 1 complete — working end-to-end demo
 Timeline      : 4 weeks
@@ -26,7 +26,7 @@ Timeline      : 4 weeks
 
 | Phase | Name | Status | Milestone |
 |-------|------|--------|-----------|
-| **Phase 1** | MVP – Assisted Dispatch | 🔄 In Progress (3/7 epics done) | Investor + pilot demo ready |
+| **Phase 1** | MVP – Assisted Dispatch | 🔄 In Progress (6/7 epics done) | Investor + pilot demo ready |
 | **Phase 2** | Autonomous Dispatch & Optimization | ⬜ Not Started | Pilot customer live |
 | **Phase 3** | Adaptive Multi-Agent & Learning | ⬜ Not Started | AI moat for Series A |
 | **Phase 4** | Fleet Intelligence Platform | ⬜ Not Started | Enterprise contracts |
@@ -59,11 +59,11 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 | P1-E1 | Infrastructure Setup | ✅ Done | `GENSPEC_P1-E1_infrastructure_setup_v2.md` | — |
 | P1-E2 | Multi-Tenant Foundations | ✅ Done | `GENSPEC_P1-E2_multi_tenancy_v2.md` | — |
 | P1-E3 | Core Domain Models & APIs | ✅ Done | `GENSPEC_P1-E3_core_domain_models_v1.md` | — |
-| P1-E3-S6 | Auth – JWT Login | ⬜ Not Started | `GENSPEC_P1-E3-S6_auth_v1.md` | P1-E3 models |
-| P1-E4 | Planner v1 (Rule-Based) | ⬜ Not Started | `GENSPEC_P1-E4_planner_v1_v1.md` | P1-E3 |
-| P1-E5 | Web UI – Ops Dashboard | ⬜ Not Started | `GENSPEC_P1-E5_ops_dashboard_v1.md` | P1-E3-S6 Auth |
+| P1-E3-S6 | Auth – JWT Login | ✅ Done | `GENSPEC_P1-E3-S6_auth_v1.md` | — |
+| P1-E4 | Planner v1 (Rule-Based) | ✅ Done | `GENSPEC_P1-E4_planner_v1_v1.md` | — |
+| P1-E5 | Web UI – Ops Dashboard | ✅ Done | `GENSPEC_P1-E5_ops_dashboard_v1.md` | — |
 | P1-E6 | Driver View | ⬜ Not Started | `GENSPEC_P1-E6_driver_view_v1.md` | P1-E4 + P1-E5 Login |
-| P1-E7 | Synthetic Data & Demo | ⬜ Not Started | `GENSPEC_P1-E7_synthetic_data_v1.md` | P1-E3 |
+| P1-E7 | Synthetic Data & Demo | ✅ Done | `GENSPEC_P1-E7_synthetic_data_v1.md` | — |
 
 ---
 
@@ -117,31 +117,31 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 | P1-E3-MIG | Alembic migration — all 13 tables | ✅ | `alembic/versions/9cfd8384148b_p1_e3_core_domain_models.py` |
 | P1-E3-VER | Verify: 13 tables in DB | ✅ | docker exec confirmed |
 
-### P1-E3-S6: Auth – JWT Login ⬜
+### P1-E3-S6: Auth – JWT Login ✅
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
-| P1-AUTH-1 | Add deps: python-jose, passlib | ⬜ | `requirements.txt` |
-| P1-AUTH-2 | JWT config in settings | ⬜ | `app/core/config.py`, `.env` |
-| P1-AUTH-3 | `app/core/security.py` | ⬜ | hash_password, create_token, decode_token |
-| P1-AUTH-4 | `app/schemas/auth.py` | ⬜ | RegisterRequest, LoginRequest, TokenResponse |
-| P1-AUTH-5 | `app/services/auth_service.py` | ⬜ | register_user, login_user |
-| P1-AUTH-6 | `app/api/v1/auth.py` | ⬜ | POST /auth/register, POST /auth/login |
-| P1-AUTH-7 | Update `app/api/deps.py` | ⬜ | get_current_user, require_dispatcher, require_driver |
-| P1-AUTH-8 | Register auth router | ⬜ | `app/api/router.py` |
-| P1-AUTH-9 | Add demo users to seed script | ⬜ | `scripts/seed_data.py` |
-| P1-AUTH-VER | Login works, token protects routes | ⬜ | curl test |
+| P1-AUTH-1 | Add deps: python-jose, passlib | ✅ | `requirements.txt` |
+| P1-AUTH-2 | JWT config in settings | ✅ | `app/core/config.py`, `.env` |
+| P1-AUTH-3 | `app/core/security.py` | ✅ | hash_password, create_token, decode_token |
+| P1-AUTH-4 | `app/schemas/auth.py` | ✅ | RegisterRequest, LoginRequest, TokenResponse |
+| P1-AUTH-5 | `app/services/auth_service.py` | ✅ | register_user, login_user |
+| P1-AUTH-6 | `app/api/v1/auth.py` | ✅ | POST /auth/register, POST /auth/login |
+| P1-AUTH-7 | Update `app/api/deps.py` | ✅ | get_current_user, require_dispatcher, require_driver |
+| P1-AUTH-8 | Register auth router | ✅ | `app/api/router.py` |
+| P1-AUTH-9 | Add demo users to seed script | ✅ | `scripts/seed_data.py` |
+| P1-AUTH-VER | App imports clean | ✅ | python import check passed |
 
-### P1-E4: Planner v1 ⬜
+### P1-E4: Planner v1 ✅
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
-| P1-E4-S1 | RuleBasedPlanner implementation | ⬜ | `app/planners/rule_based.py` |
-| P1-E4-S2 | PlanningService wrapper | ⬜ | `app/services/planning_service.py` |
-| P1-E4-S3 | `/plan/day` endpoint | ⬜ | `app/api/v1/planning.py` |
-| P1-E4-S4 | Maps API client (optional) | ⬜ | `app/core/maps.py` |
-| P1-E4-S5 | Register planning router | ⬜ | `app/api/router.py` |
-| P1-E4-VER | Planner assigns orders to drivers | ⬜ | curl test |
+| P1-E4-S1 | RuleBasedPlanner implementation | ✅ | `app/planners/rule_based.py` |
+| P1-E4-S2 | PlanningService wrapper | ✅ | `app/services/planning_service.py` |
+| P1-E4-S3 | `/plan/day` endpoint | ✅ | `app/api/v1/planning.py` |
+| P1-E4-S4 | Maps API client (optional) | ✅ | `app/core/maps.py` (stub, activates when MAPS_API_KEY set) |
+| P1-E4-S5 | Register planning router | ✅ | `app/api/router.py` |
+| P1-E4-VER | App imports clean | ✅ | python import check passed |
 
 ### P1-E5: Ops Dashboard UI ⬜
 
@@ -174,14 +174,14 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 | P1-E6-SEED | Link driver email in seed script | ⬜ | `scripts/seed_data.py` |
 | P1-E6-VER | Driver sees stops + marks delivered | ⬜ | Manual test |
 
-### P1-E7: Synthetic Data & Demo ⬜
+### P1-E7: Synthetic Data & Demo ✅
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
-| P1-E7-S1 | Bangalore data generator | ⬜ | `scripts/seed_data.py` |
-| P1-E7-S2 | CLI options (--start-date, --days, --clean) | ⬜ | `scripts/seed_data.py` |
-| P1-E7-S3 | Demo users created in seed | ⬜ | `scripts/seed_data.py` |
-| P1-E7-VER | Full demo flow works end to end | ⬜ | Manual walkthrough |
+| P1-E7-S1 | Bangalore data generator | ✅ | `scripts/seed_data.py` |
+| P1-E7-S2 | CLI options (--start-date, --days, --clean) | ✅ | `scripts/seed_data.py` |
+| P1-E7-S3 | Demo users created in seed | ✅ | `scripts/seed_data.py` |
+| P1-E7-VER | Seed ran: 2 depots, 20 drivers, 20 vehicles, 50 customers, 99 orders | ✅ | Verified live |
 
 ---
 

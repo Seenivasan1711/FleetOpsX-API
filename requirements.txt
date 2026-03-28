@@ -12,6 +12,8 @@ python-dotenv
 redis
 httpx
 python-multipart
+python-jose[cryptography]
+bcrypt
 
 # Observability
 sentry-sdk[fastapi]
