@@ -1,11 +1,13 @@
-from pydantic import BaseSettings
+from pydantic import HttpUrl
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Optional
 
 class Settings(BaseSettings):
-    app_env: str = "local"
-    database_url: str
-    redis_url: str
+    APP_ENV: str = "local"
+    DATABASE_URL: str
+    REDIS_URL: str
+    SENTRY_DSN: Optional[str] = None
 
-    class Config:
-        env_file = ".env"
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
 settings = Settings()

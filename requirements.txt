@@ -6,9 +6,14 @@ alembic
 psycopg2-binary
 
 pydantic
+pydantic-settings
 python-dotenv
 
 redis
 httpx
-
 python-multipart
+
+# Observability
+sentry-sdk[fastapi]
+loguru
+prometheus-fastapi-instrumentator
