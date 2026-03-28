@@ -11,10 +11,10 @@
 
 ```
 Last Updated  : 2026-03-29
-Last Worked On: P1-E2 Multi-Tenant Foundations ✅
+Last Worked On: P1-E3 Core Domain Models & APIs ✅
 Current Phase : Phase 1 – MVP
-Current Epic  : P1-E3 Core Domain Models & APIs (ready to start)
-Next Action   : Implement P1-E3 (models, schemas, services, CRUD routers, migration)
+Current Epic  : P1-E3-S6 Auth – JWT Login (ready to start)
+Next Action   : Implement JWT auth (security.py, auth schemas, auth service, auth router)
 Blocker       : None
 Demo Target   : Phase 1 complete — working end-to-end demo
 Timeline      : 4 weeks
@@ -26,7 +26,7 @@ Timeline      : 4 weeks
 
 | Phase | Name | Status | Milestone |
 |-------|------|--------|-----------|
-| **Phase 1** | MVP – Assisted Dispatch | 🔄 In Progress (2/7 epics done) | Investor + pilot demo ready |
+| **Phase 1** | MVP – Assisted Dispatch | 🔄 In Progress (3/7 epics done) | Investor + pilot demo ready |
 | **Phase 2** | Autonomous Dispatch & Optimization | ⬜ Not Started | Pilot customer live |
 | **Phase 3** | Adaptive Multi-Agent & Learning | ⬜ Not Started | AI moat for Series A |
 | **Phase 4** | Fleet Intelligence Platform | ⬜ Not Started | Enterprise contracts |
@@ -58,7 +58,7 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 |------|------|--------|---------|---------|
 | P1-E1 | Infrastructure Setup | ✅ Done | `GENSPEC_P1-E1_infrastructure_setup_v2.md` | — |
 | P1-E2 | Multi-Tenant Foundations | ✅ Done | `GENSPEC_P1-E2_multi_tenancy_v2.md` | — |
-| P1-E3 | Core Domain Models & APIs | ⬜ Not Started | `GENSPEC_P1-E3_core_domain_models_v1.md` | P1-E2 |
+| P1-E3 | Core Domain Models & APIs | ✅ Done | `GENSPEC_P1-E3_core_domain_models_v1.md` | — |
 | P1-E3-S6 | Auth – JWT Login | ⬜ Not Started | `GENSPEC_P1-E3-S6_auth_v1.md` | P1-E3 models |
 | P1-E4 | Planner v1 (Rule-Based) | ⬜ Not Started | `GENSPEC_P1-E4_planner_v1_v1.md` | P1-E3 |
 | P1-E5 | Web UI – Ops Dashboard | ⬜ Not Started | `GENSPEC_P1-E5_ops_dashboard_v1.md` | P1-E3-S6 Auth |
@@ -82,7 +82,7 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 | **BUG-002** | Fix `main.py` wrong import | ✅ Fixed | `app/main.py` — `config.settings.SENTRY_DSN` |
 | **BUG-003** | Fix `planners/interface.py` bare stub | ✅ Fixed | `app/planners/interface.py` — ABC + @abstractmethod |
 
-### P1-E2: Multi-Tenant Foundations ⬜
+### P1-E2: Multi-Tenant Foundations ✅
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
@@ -90,32 +90,32 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 | P1-E2-PRE2 | Fix BUG-002 | ✅ | `app/main.py` |
 | P1-E2-PRE3 | Fix BUG-003 | ✅ | `app/planners/interface.py` |
 | P1-E2-S1 | Tenant model already exists | ✅ | `app/models/tenant.py` |
-| P1-E2-S2 | Tenant ContextVar | ⬜ | `app/core/context.py` |
-| P1-E2-S3 | TenantMiddleware | ⬜ | `app/core/middleware.py` |
-| P1-E2-S4 | FastAPI deps (`require_tenant_id`) | ⬜ | `app/api/deps.py` |
-| P1-E2-S5 | Central API router | ⬜ | `app/api/router.py` |
-| P1-E2-S6 | Register middleware in main.py | ⬜ | `app/main.py` |
-| P1-E2-S7 | Alembic migration — tenant tables | ⬜ | `alembic/versions/` |
-| P1-E2-VER | Verify: no header → 400 response | ⬜ | curl test |
+| P1-E2-S2 | Tenant ContextVar | ✅ | `app/core/context.py` |
+| P1-E2-S3 | TenantMiddleware | ✅ | `app/core/middleware.py` |
+| P1-E2-S4 | FastAPI deps (`require_tenant_id`) | ✅ | `app/api/deps.py` |
+| P1-E2-S5 | Central API router | ✅ | `app/api/router.py` |
+| P1-E2-S6 | Register middleware in main.py | ✅ | `app/main.py` |
+| P1-E2-S7 | Alembic migration — tenant tables | ✅ | `alembic/versions/69965e83503f_p1_e2_add_tenant_models.py` |
+| P1-E2-VER | Verify: tenants + tenant_configs in DB at (head) | ✅ | docker exec confirmed |
 
-### P1-E3: Core Domain Models & APIs ⬜
+### P1-E3: Core Domain Models & APIs ✅
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
-| P1-E3-M1 | User model | ⬜ | `app/models/user.py` |
-| P1-E3-M2 | Depot model | ⬜ | `app/models/depot.py` |
-| P1-E3-M3 | Driver model | ⬜ | `app/models/driver.py` |
-| P1-E3-M4 | DriverShift model | ⬜ | `app/models/driver_shift.py` |
-| P1-E3-M5 | Vehicle model | ⬜ | `app/models/vehicle.py` |
-| P1-E3-M6 | Customer model | ⬜ | `app/models/customer.py` |
-| P1-E3-M7 | Order model | ⬜ | `app/models/order.py` |
-| P1-E3-M8 | RoutePlan/Route/RouteStop/Event | ⬜ | `app/models/route_plan.py` |
-| P1-E3-M9 | Update `__init__.py` | ⬜ | `app/models/__init__.py` |
-| P1-E3-SCH | All 7 Pydantic schema files | ⬜ | `app/schemas/` |
-| P1-E3-SVC | All 5 service files | ⬜ | `app/services/` |
-| P1-E3-API | All 5 CRUD routers | ⬜ | `app/api/v1/` |
-| P1-E3-MIG | Alembic migration — all 13 tables | ⬜ | `alembic/versions/` |
-| P1-E3-VER | Verify: 13 tables in DB + CRUD works | ⬜ | curl test |
+| P1-E3-M1 | User model | ✅ | `app/models/user.py` |
+| P1-E3-M2 | Depot model | ✅ | `app/models/depot.py` |
+| P1-E3-M3 | Driver model | ✅ | `app/models/driver.py` |
+| P1-E3-M4 | DriverShift model | ✅ | `app/models/driver_shift.py` |
+| P1-E3-M5 | Vehicle model | ✅ | `app/models/vehicle.py` |
+| P1-E3-M6 | Customer model | ✅ | `app/models/customer.py` |
+| P1-E3-M7 | Order model | ✅ | `app/models/order.py` |
+| P1-E3-M8 | RoutePlan/Route/RouteStop/Event | ✅ | `app/models/route_plan.py` |
+| P1-E3-M9 | Update `__init__.py` | ✅ | `app/models/__init__.py` |
+| P1-E3-SCH | All 7 Pydantic schema files | ✅ | `app/schemas/` |
+| P1-E3-SVC | All 5 service files | ✅ | `app/services/` |
+| P1-E3-API | All 5 CRUD routers | ✅ | `app/api/v1/` |
+| P1-E3-MIG | Alembic migration — all 13 tables | ✅ | `alembic/versions/9cfd8384148b_p1_e3_core_domain_models.py` |
+| P1-E3-VER | Verify: 13 tables in DB | ✅ | docker exec confirmed |
 
 ### P1-E3-S6: Auth – JWT Login ⬜
 
