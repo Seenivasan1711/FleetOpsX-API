@@ -11,10 +11,10 @@
 
 ```
 Last Updated  : 2026-03-29
-Last Worked On: P2-E7 SLA Risk Alerts ✅
-Current Phase : Phase 2 – Autonomous Dispatch
-Current Epic  : PHASE 2 COMPLETE ✅
-Next Action   : Phase 3 planning or demo prep
+Last Worked On: P3-E3 Proactive Planning & Suggested Actions UI ✅  (Phase 3 COMPLETE)
+Current Phase : Phase 3 complete — ready for Phase 4 or demo prep
+Current Epic  : P4-E1 — Multi-Region & Per-Tenant DB (next, if proceeding to Phase 4)
+Next Action   : Demo prep OR start P4-E1
 Blocker       : None
 Demo Target   : LangGraph agent + live map + agent feed
 Timeline      : 2 weeks
@@ -28,7 +28,7 @@ Timeline      : 2 weeks
 |-------|------|--------|-----------|
 | **Phase 1** | MVP – Assisted Dispatch | ✅ Done (7/7 epics done) | Investor + pilot demo ready |
 | **Phase 2** | Autonomous Dispatch & Optimization | ✅ Done (7/7 epics done) | Pilot customer live |
-| **Phase 3** | Adaptive Multi-Agent & Learning | ⬜ Not Started | AI moat for Series A |
+| **Phase 3** | Adaptive Multi-Agent & Learning | ✅ Done (3/3 epics done) | AI moat for Series A |
 | **Phase 4** | Fleet Intelligence Platform | ⬜ Not Started | Enterprise contracts |
 
 ---
@@ -288,18 +288,65 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 
 | Epic | Name | Status | GENSPEC |
 |------|------|--------|---------|
-| P3-E1 | Historical Analytics & Feature Store | ⬜ Planning | `GENSPEC_P3_P4_multi_agent_enterprise_v1.md` |
-| P3-E2 | Multi-Agent System (Planner, Monitor, Forecast, Explainer) | ⬜ Planning | `GENSPEC_P3_P4_multi_agent_enterprise_v1.md` |
-| P3-E3 | Proactive Planning | ⬜ Planning | `GENSPEC_P3_P4_multi_agent_enterprise_v1.md` |
+| P3-E1 | Historical Analytics & Feature Store | ✅ Done | `DEV_SPEC_P3_adaptive_multi_agent_v1.md` |
+| P3-E2 | Multi-Agent Orchestration (Forecast, Planner, Explainer, Monitor) | ✅ Done | `DEV_SPEC_P3_adaptive_multi_agent_v1.md` |
+| P3-E3 | Proactive Planning & Suggested Actions UI | ✅ Done | `DEV_SPEC_P3_adaptive_multi_agent_v1.md` |
+
+---
+
+### P3-E1: Historical Analytics & Feature Store ✅
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| P3-E1-S1 | `DeliveryAnalytics` + `DriverPerformanceScore` models | ✅ | `app/models/analytics.py` |
+| P3-E1-S2 | Alembic migration for analytics tables | ✅ | `alembic/versions/a1b2c3d4e5f6_p3_e1_analytics_tables.py` |
+| P3-E1-S3 | `AnalyticsService` — ETL function (idempotent upsert) | ✅ | `app/services/analytics_service.py` |
+| P3-E1-S4 | APScheduler setup + register daily ETL job @ 01:00 | ✅ | `app/workers/scheduler.py`, `app/main.py` |
+| P3-E1-S5 | Analytics API endpoints (kpis, driver-performance, run-etl) | ✅ | `app/api/v1/analytics.py` |
+| P3-E1-S6 | Register analytics router | ✅ | `app/api/router.py` |
+| P3-E1-S7 | `recharts` added to package.json + frontend API client | ✅ | `src/api/analytics.ts` |
+| P3-E1-S8 | Analytics page (KPI cards + charts + driver leaderboard) | ✅ | `src/pages/Analytics.tsx` |
+| P3-E1-S9 | Add `/analytics` route + nav item | ✅ | `AppRoutes.tsx`, `AppLayout.tsx` |
+| P3-E1-VER | Run ETL → GET /analytics/kpis returns data → charts render | ⬜ | Manual test |
+
+### P3-E2: Multi-Agent Orchestration ✅
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| P3-E2-S1 | `AgentSuggestion` model | ✅ | `app/models/agent_suggestion.py` |
+| P3-E2-S2 | Alembic migration for `agent_suggestions` | ✅ | `alembic/versions/b2c3d4e5f6a7_p3_e2_agent_suggestions.py` |
+| P3-E2-S3 | Forecast Agent node (day-of-week baseline from DeliveryAnalytics) | ✅ | `app/planners/agents/forecast_agent.py` |
+| P3-E2-S4 | Monitor Agent (standalone scan function, creates AgentSuggestion rows) | ✅ | `app/planners/agents/monitor_agent.py` |
+| P3-E2-S5 | Multi-agent LangGraph orchestrator (fetch_context → forecast → call_optimizer → explain) | ✅ | `app/planners/orchestrator.py` |
+| P3-E2-S6 | `MultiAgentPlanner` implementing `PlannerInterface` | ✅ | `app/planners/multi_agent_planner.py` |
+| P3-E2-S7 | Add `multi_agent` case to `get_planner()` factory | ✅ | `app/services/planning_service.py` |
+| P3-E2-S8 | `AgentSuggestionOut` + `AgentSuggestionUpdate` schemas | ✅ | `app/schemas/agent_suggestion.py` |
+| P3-E2-S9 | `GET /agent/suggestions` + `PATCH /agent/suggestions/{id}` endpoints | ✅ | `app/api/v1/agent_suggestions.py` |
+| P3-E2-S10 | Register agent_suggestions router | ✅ | `app/api/router.py` |
+| P3-E2-VER | PLANNER_TYPE=multi_agent → forecast step in response, agent logs show 4 steps | ⬜ | Manual test |
+
+### P3-E3: Proactive Planning & Suggested Actions UI ✅
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| P3-E3-S1 | Register Monitor scan job in APScheduler (every 5 min, 07–20h) | ✅ | `app/workers/scheduler.py` |
+| P3-E3-S2 | Accept REPLAN_DRIVER → triggers scoped replan, marks ACCEPTED | ✅ | `app/api/v1/agent_suggestions.py` (done in P3-E2) |
+| P3-E3-S3 | Frontend API client for suggestions (fetch + respond) | ✅ | `src/api/agentSuggestions.ts` |
+| P3-E3-S4 | `SuggestedActions` component (Accept/Dismiss, polls 60s) | ✅ | `src/components/shared/SuggestedActions.tsx` |
+| P3-E3-S5 | Add `SuggestedActions` to Dashboard below SLA panel | ✅ | `src/pages/Dashboard.tsx` |
+| P3-E3-S6 | Planning page PENDING suggestions badge | ✅ | `src/pages/Planning.tsx` |
+| P3-E3-S7 | Add `AgentSuggestion` type to frontend types | ✅ | `src/types/index.ts` |
+| P3-E3-VER | Monitor scan creates suggestion → appears in UI → Accept triggers replan | ⬜ | Manual test |
 
 ## Phase 4 – Epic Status
 
 | Epic | Name | Status | GENSPEC |
 |------|------|--------|---------|
-| P4-E1 | Multi-Region & Per-Tenant DB | ⬜ Planning | `GENSPEC_P3_P4_multi_agent_enterprise_v1.md` |
-| P4-E2 | Partner APIs (ERP/WMS/TMS) | ⬜ Planning | `GENSPEC_P3_P4_multi_agent_enterprise_v1.md` |
-| P4-E3 | Capacity Marketplace | ⬜ Planning | `GENSPEC_P3_P4_multi_agent_enterprise_v1.md` |
-| P4-E4 | Governance, Compliance & Audit | ⬜ Planning | `GENSPEC_P3_P4_multi_agent_enterprise_v1.md` |
+| P4-E1 | Multi-Region & Per-Tenant DB Routing | ⬜ Not Started | `DEV_SPEC_P4_fleet_intelligence_platform_v1.md` |
+| P4-E2 | Partner APIs & Webhook Integration (ERP/WMS/TMS) | ⬜ Not Started | `DEV_SPEC_P4_fleet_intelligence_platform_v1.md` |
+| P4-E3 | Capacity Marketplace | ⬜ Not Started | `DEV_SPEC_P4_fleet_intelligence_platform_v1.md` |
+| P4-E4 | Governance, Compliance & Audit | ⬜ Not Started | `DEV_SPEC_P4_fleet_intelligence_platform_v1.md` |
+| P4-E5 | Multi-Day Strategic Planning & Scenario Simulator | ⬜ Not Started | `DEV_SPEC_P4_fleet_intelligence_platform_v1.md` |
 
 ---
 
@@ -319,12 +366,14 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 | `GENSPEC_P1-E6_driver_view_v1.md` | P1-E6 | ✅ Implement | Driver mobile web view + status updates |
 | `GENSPEC_P1-E7_synthetic_data_v1.md` | P1-E7 | ✅ Implement | Bangalore seed script |
 
-### Phase 2-4 — High Level (detail added when Phase 1 ships)
+### Phase 2-4 — Detailed Specs
 
 | File | Phases | Ready? |
 |------|--------|--------|
-| `GENSPEC_P2_autonomous_dispatch_v1.md` | Phase 2 | ✅ Spec (not implement yet) |
-| `GENSPEC_P3_P4_multi_agent_enterprise_v1.md` | Phase 3 & 4 | ✅ Planning |
+| `DEV_SPEC_P2_autonomous_dispatch_v2.md` | Phase 2 | ✅ Implemented |
+| `DEV_SPEC_P3_adaptive_multi_agent_v1.md` | Phase 3 | ✅ Implemented |
+| `DEV_SPEC_P4_fleet_intelligence_platform_v1.md` | Phase 4 | ✅ Spec (5 epics, ready to implement) |
+| `DEV_SPEC_P3_P4_multi_agent_enterprise_v1.md` | Phase 3 & 4 | ⚠️ Superseded — use P3/P4 individual specs above |
 
 ---
 

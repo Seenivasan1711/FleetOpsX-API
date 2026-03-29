@@ -23,6 +23,9 @@ prometheus-fastapi-instrumentator
 # Phase 2 — Route Optimization
 ortools>=9.8
 
+# Phase 3 — Scheduling
+apscheduler>=3.10
+
 # Phase 2 — LLM / LangChain
 langchain-core>=0.2
 langchain-google-genai>=1.0

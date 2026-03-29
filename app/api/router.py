@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from app.api import health
-from app.api.v1 import auth, depots, drivers, vehicles, customers, orders, planning, driver, tenants, agent_logs, tracking, sla
+from app.api.v1 import auth, depots, drivers, vehicles, customers, orders, planning, driver, tenants, agent_logs, tracking, sla, analytics, agent_suggestions
 
 api_router = APIRouter()
 api_router.include_router(health.router, tags=["Health"])
@@ -16,3 +16,5 @@ api_router.include_router(tenants.router, prefix="/api/v1")
 api_router.include_router(agent_logs.router, prefix="/api/v1")
 api_router.include_router(tracking.router, prefix="/api/v1")
 api_router.include_router(sla.router, prefix="/api/v1")
+api_router.include_router(analytics.router, prefix="/api/v1")
+api_router.include_router(agent_suggestions.router, prefix="/api/v1")

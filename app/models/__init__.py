@@ -10,6 +10,8 @@ from app.models.order import Order
 from app.models.route_plan import RoutePlan, Route, RouteStop, DeliveryEvent
 from app.models.agent_log import AgentLog
 from app.models.tracking import DriverLocationPing
+from app.models.analytics import DeliveryAnalytics, DriverPerformanceScore
+from app.models.agent_suggestion import AgentSuggestion
 
 __all__ = [
     "Base", "TimestampMixin", "TenantMixin",
@@ -23,4 +25,6 @@ __all__ = [
     "RoutePlan", "Route", "RouteStop", "DeliveryEvent",
     "AgentLog",
     "DriverLocationPing",
+    "DeliveryAnalytics", "DriverPerformanceScore",
+    "AgentSuggestion",
 ]

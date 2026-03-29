@@ -25,6 +25,10 @@ def get_planner() -> PlannerInterface:
         from app.planners.langgraph_agent import LangGraphPlanner
         return LangGraphPlanner()
 
+    if planner_type == "multi_agent":
+        from app.planners.multi_agent_planner import MultiAgentPlanner
+        return MultiAgentPlanner()
+
     # Default — rule_based
     from app.planners.rule_based import RuleBasedPlanner
     return RuleBasedPlanner()
