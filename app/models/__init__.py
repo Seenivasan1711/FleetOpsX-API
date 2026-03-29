@@ -8,6 +8,8 @@ from app.models.vehicle import Vehicle
 from app.models.customer import Customer
 from app.models.order import Order
 from app.models.route_plan import RoutePlan, Route, RouteStop, DeliveryEvent
+from app.models.agent_log import AgentLog
+from app.models.tracking import DriverLocationPing
 
 __all__ = [
     "Base", "TimestampMixin", "TenantMixin",
@@ -19,4 +21,6 @@ __all__ = [
     "Customer",
     "Order",
     "RoutePlan", "Route", "RouteStop", "DeliveryEvent",
+    "AgentLog",
+    "DriverLocationPing",
 ]

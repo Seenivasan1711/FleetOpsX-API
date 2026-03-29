@@ -41,6 +41,11 @@ services:
       # Force watchfiles to use polling so uvicorn --reload works
       # when source files are on a macOS host mounted into a Linux container
       WATCHFILES_FORCE_POLLING: "true"
+      # LLM keys — set in .env or override here
+      LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     ports:
       - "8000:8000"
     volumes:

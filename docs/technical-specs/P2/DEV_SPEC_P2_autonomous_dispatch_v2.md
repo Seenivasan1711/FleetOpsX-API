@@ -10,7 +10,7 @@
 | Field | Value |
 |-------|-------|
 | **Phase** | Phase 2 |
-| **Version** | 2.0 |
+| **Version** | 2.1 |
 | **Date** | 2026-03-29 |
 | **Depends On** | Phase 1 fully complete ✅ |
 | **Author** | Engineering Team |
@@ -20,6 +20,20 @@
 ## Phase Goal
 
 Evolve FleetOpsX from a rule-based assisted dispatch tool into an AI-powered autonomous dispatch platform. A tenant-configurable LLM agent (LangGraph) calls OR-Tools to produce optimal routes, explains its decisions, and tracks drivers in real time — all while letting each tenant bring their own LLM API key.
+
+---
+
+## Source Document Alignment Notes
+
+> These notes record how this spec relates to the original product/HLD docs for future developers.
+
+| Note | Detail |
+|------|--------|
+| **Multi-LLM (P2-E2) extends original design** | `tech_stack.md` specified "OpenAI (configurable via env)" — single provider. This spec elevates that to per-tenant multi-provider config (Claude/OpenAI/Gemini) stored in `tenant_configs`. This is strictly additive and consistent with `task_wise_plan.md §6.2` which already defines `tenant_config` as the home for tenant-specific feature flags. |
+| **Live map deferred from Phase 1 to Phase 2** | `scope.md §1.2.3` mentions "ETA and simple route map" in Phase 1. This was intentionally deferred because a meaningful live map requires real GPS tracking data (P2-E4) which doesn't exist in Phase 1. The static route preview in Phase 1 was never implemented — Phase 2 delivers the full, live-updating version. |
+| **No separate Guardrail Agent** | `scope.md §2.3` mentions an "optional Guardrail Agent". This is intentionally not implemented as a separate LLM agent. Instead, OR-Tools enforces all hard constraints (time windows, vehicle capacity, max route duration) deterministically. An LLM guardrail would be probabilistic and slower for constraint checking — OR-Tools is the correct tool. This decision follows `task_wise_plan.md §10`: "treat the agent layer as an orchestrator for deterministic services, not as a black-box decision maker." |
+| **`/plan/replan` added** | `task_wise_plan.md P2-E3-S3` and `scope.md §2.2.3` both explicitly call for a replan endpoint. Added to P2-E4 as P2-E4-S9. |
+| **`vehicle_id` added to tracking model** | `architecture.md §3` ERD shows `TRACKING_POINT }o--|| VEHICLE`. Added as nullable FK to `DriverLocationPing` to align with ERD and support future vehicle-level telematics. |
 
 ---
 
@@ -53,8 +67,9 @@ Evolve FleetOpsX from a rule-based assisted dispatch tool into an AI-powered aut
 │  │   │  gemini / other  │                  │                     │   │
 │  │   └──────────────────┘                  │                     │   │
 │  │                                         │                     │   │
-│  │   /tracking/ping ──► Redis (latest pos) │                     │   │
-│  │   /tracking/live ──► positions + routes │                     │   │
+│  │   /tracking/ping  ──► Redis (latest pos) │                    │   │
+│  │   /tracking/live  ──► positions + routes │                    │   │
+│  │   /plan/replan    ──► re-run OR-Tools for driver's stops      │   │
 │  └───────────────────────────────────────────────────────────────┘  │
 │                                                                      │
 │  Driver App ──► POST /tracking/ping (every 30s)                      │
@@ -356,6 +371,8 @@ def get_planner():
 ---
 
 ## Epic P2-E2: Multi-LLM Provider System
+
+> **Design note:** The original `tech_stack.md` specified a single OpenAI provider via env var. This epic elevates that to a full per-tenant multi-provider system. The original design is a special case of this one (single tenant, single provider, env var key) — fully backward compatible.
 
 ### Goal
 Let each tenant configure their own LLM provider (Claude / OpenAI / Gemini / extensible) and API key via tenant config. The LangGraph agent uses this abstraction. No hardcoded API keys anywhere.
@@ -805,6 +822,8 @@ class PlanResult(BaseModel):
 
 ## Epic P2-E4: Real-Time GPS Tracking
 
+> **Design note:** The source `architecture.md §3` ERD shows `TRACKING_POINT }o--|| VEHICLE`. The model includes an optional `vehicle_id` FK to align with the ERD and support future vehicle-level telematics (Phase 3). In Phase 2 it is nullable since driver→vehicle assignment is 1:1 per route and can be derived.
+
 ### Goal
 Driver app pings location every 30 seconds. Dispatcher dashboard shows live driver positions. Latest position stored in Redis for fast reads; full history in Postgres.
 
@@ -815,6 +834,68 @@ Driver app pings location every 30 seconds. Dispatcher dashboard shows live driv
 | `POST` | `/api/v1/tracking/ping` | driver | Receive GPS ping from driver app |
 | `GET` | `/api/v1/tracking/live` | dispatcher | Get latest position of all active drivers |
 | `GET` | `/api/v1/tracking/history/{driver_id}` | dispatcher | Full ping history for a driver |
+| `POST` | `/api/v1/plan/replan` | dispatcher | Re-optimise remaining stops for one driver or full fleet |
+
+### Re-plan Endpoint (`POST /api/v1/plan/replan`)
+
+> Source: `task_wise_plan.md P2-E3-S3` and `scope.md §2.2.3` — explicitly required by source docs.
+
+**Request body:**
+```json
+{
+  "plan_date": "2026-03-29",
+  "driver_id": "<uuid>|null"   // null = replan full fleet
+}
+```
+
+**Behaviour:**
+- If `driver_id` is provided: re-run OR-Tools only for that driver's **remaining PENDING stops** on that date (already-delivered stops are locked in).
+- If `driver_id` is null: re-run OR-Tools for all drivers' remaining stops (full fleet replan).
+- Creates a new `RoutePlan` record with `status='DRAFT'` and `planner_version='ortools_replan_v1'`.
+- Returns same `PlanResult` shape as `/plan/day`.
+- The dispatcher reviews and confirms before it goes live (status promoted to `PUBLISHED`).
+
+**Implementation sketch (`app/api/v1/planning.py`):**
+```python
+@router.post("/plan/replan")
+def replan(
+    plan_date: str,
+    driver_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_dispatcher),
+):
+    from app.planners.ortools_planner import ORToolsPlanner
+    from app.models.route_plan import RouteStop
+
+    # 1. Find pending stops for the driver(s)
+    q = db.query(RouteStop).join(...).filter(
+        RouteStop.tenant_id == current_user.tenant_id,
+        RouteStop.status == 'PENDING',
+    )
+    if driver_id:
+        q = q.filter(Route.driver_id == driver_id)
+
+    pending_stop_order_ids = [s.order_id for s in q.all()]
+
+    # 2. Reset those orders to PENDING so OR-Tools picks them up
+    db.query(Order).filter(Order.id.in_(pending_stop_order_ids)).update(
+        {"status": "PENDING"}, synchronize_session=False
+    )
+    db.commit()
+
+    # 3. Re-run planner (same interface as /plan/day)
+    planner = ORToolsPlanner()
+    result = planner.plan_day(db, current_user.tenant_id, plan_date)
+    result["replan"] = True
+    return result
+```
+
+**Files added for replan:**
+
+| File | Action | Description |
+|------|--------|-------------|
+| `app/api/v1/planning.py` | Update | Add `POST /plan/replan` endpoint |
+| `app/services/planning_service.py` | Update | Add `replan_day(driver_id, plan_date)` method |
 
 ### Files
 
@@ -845,6 +926,7 @@ class DriverLocationPing(Base, TimestampMixin, TenantMixin):
 
     id          = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     driver_id   = Column(UUID(as_uuid=True), ForeignKey("drivers.id"), nullable=False)
+    vehicle_id  = Column(UUID(as_uuid=True), ForeignKey("vehicles.id"), nullable=True)  # nullable — aligns with ERD TRACKING_POINT→VEHICLE
     latitude    = Column(Float, nullable=False)
     longitude   = Column(Float, nullable=False)
     accuracy_m  = Column(Float, nullable=True)     # GPS accuracy in metres
@@ -866,11 +948,13 @@ REDIS_TTL_SECONDS = 3600  # 1 hour
 
 def record_ping(db: Session, tenant_id: str, driver_id: str,
                 lat: float, lng: float, accuracy: float = None,
-                speed: float = None, heading: float = None):
+                speed: float = None, heading: float = None,
+                vehicle_id: str = None):
     # 1. Write to Postgres for history
     ping = DriverLocationPing(
         tenant_id=tenant_id,
         driver_id=driver_id,
+        vehicle_id=vehicle_id,   # nullable — populated when driver has assigned vehicle
         latitude=lat,
         longitude=lng,
         accuracy_m=accuracy,
@@ -952,11 +1036,14 @@ useEffect(() => {
 ```
 
 ### Acceptance Criteria
-- [ ] `POST /tracking/ping` from driver app stores ping in DB + Redis
+- [ ] `POST /tracking/ping` from driver app stores ping in DB + Redis (with optional `vehicle_id`)
 - [ ] `GET /tracking/live` returns latest position for all active drivers within 1s
 - [ ] Driver app pings every 30s when on DriverView page
 - [ ] Redis key `driver:{id}:location` updated on each ping
 - [ ] Redis TTL = 1 hour (driver goes offline → position expires)
+- [ ] `POST /plan/replan` with `driver_id` re-optimises that driver's remaining stops
+- [ ] `POST /plan/replan` without `driver_id` re-optimises full fleet remaining stops
+- [ ] Replan returns same `PlanResult` shape with `"replan": true`
 
 ---
 
@@ -1237,6 +1324,8 @@ const { data: atRisk = [] } = useQuery({
 | `app/api/v1/tracking.py` | P2-E4 | ⬜ |
 | `app/services/tracking_service.py` | P2-E4 | ⬜ |
 | `app/core/db.py` | P2-E4 | ⬜ |
+| `app/api/v1/planning.py` | P2-E4 (replan) | ⬜ |
+| `app/services/planning_service.py` | P2-E4 (replan) | ⬜ |
 | `app/services/sla_service.py` | P2-E7 | ⬜ |
 | `app/api/v1/sla.py` | P2-E7 | ⬜ |
 | `alembic/versions/xxx_p2_ortools_llm_config.py` | P2-E1,E2 | ⬜ |
@@ -1270,9 +1359,11 @@ const { data: atRisk = [] } = useQuery({
 | Gemini as default demo provider | Free tier available; `gemini-2.0-flash` is fast and capable |
 | Fallback chain: tenant → env → rule_based | Zero crash if no key configured — system degrades gracefully |
 | OR-Tools wraps rule_based fallback | If no solution found in 10s, always returns a valid plan |
+| **OR-Tools as Guardrail (no separate LLM guardrail agent)** | `scope.md §2.3` mentions an optional Guardrail Agent for checking labor rules/capacity/SLA. This is covered by OR-Tools hard constraints (time windows, capacity limits, max route duration) enforced deterministically in the solver. An LLM guardrail would be probabilistic and slower. Per `task_wise_plan.md §10`: "treat the agent layer as an orchestrator for deterministic services". Future Phase 3 policy engine can add soft-constraint guardrails if needed. |
 | Leaflet + OpenStreetMap | Zero cost, no API key, swap to Mapbox = 1 line change |
 | Polling over WebSocket | Simpler for Phase 2; WebSocket upgrade in Phase 3 when scale demands it |
 | Agent logs in Postgres | Full audit trail of AI decisions; queryable; survives restarts |
+| `vehicle_id` nullable on tracking model | Aligns with `architecture.md §3` ERD (`TRACKING_POINT→VEHICLE`). Nullable in Phase 2 since driver→vehicle is 1:1 and derivable. Required for Phase 3 telematics integration. |
 
 ---
 
@@ -1296,5 +1387,5 @@ Week 2 — Frontend
 
 ---
 
-**Document Status:** Active
+**Document Status:** Active — v2.1 (gaps from HLD alignment review fixed)
 **Last Updated:** 2026-03-29

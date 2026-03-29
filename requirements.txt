@@ -19,3 +19,13 @@ bcrypt
 sentry-sdk[fastapi]
 loguru
 prometheus-fastapi-instrumentator
+
+# Phase 2 — Route Optimization
+ortools>=9.8
+
+# Phase 2 — LLM / LangChain
+langchain-core>=0.2
+langchain-google-genai>=1.0
+langchain-openai>=0.1
+langchain-anthropic>=0.1
+langgraph>=0.1

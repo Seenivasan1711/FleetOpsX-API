@@ -11,10 +11,10 @@
 
 ```
 Last Updated  : 2026-03-29
-Last Worked On: P1 fully complete ✅  Tailwind v4 fixed ✅
+Last Worked On: P2-E4 Real-Time GPS Tracking ✅
 Current Phase : Phase 2 – Autonomous Dispatch
-Current Epic  : P2-E1 — OR-Tools VRPTW (next to start)
-Next Action   : Implement P2-E1 → ortools_planner.py + config + service switch + migration
+Current Epic  : P2-E5 — Live Map Dashboard (next)
+Next Action   : Implement P2-E5 → Leaflet + OSM map in UI, driver markers from /tracking/live
 Blocker       : None
 Demo Target   : LangGraph agent + live map + agent feed
 Timeline      : 2 weeks
@@ -189,10 +189,10 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 
 | Epic | Name | Status | GENSPEC |
 |------|------|--------|---------|
-| P2-E1 | OR-Tools VRPTW Optimization | ⬜ Not Started | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
-| P2-E2 | Multi-LLM Provider (Claude/OpenAI/Gemini) | ⬜ Not Started | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
-| P2-E3 | LangGraph Dispatch Agent | ⬜ Not Started | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
-| P2-E4 | Real-Time GPS Tracking | ⬜ Not Started | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
+| P2-E1 | OR-Tools VRPTW Optimization | ✅ Done | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
+| P2-E2 | Multi-LLM Provider (Claude/OpenAI/Gemini) | ✅ Done | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
+| P2-E3 | LangGraph Dispatch Agent | ✅ Done | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
+| P2-E4 | Real-Time GPS Tracking | ✅ Done | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
 | P2-E5 | Live Map Dashboard (Leaflet + OSM) | ⬜ Not Started | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
 | P2-E6 | Agent Activity Feed (UI) | ⬜ Not Started | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
 | P2-E7 | SLA Risk Alerts | ⬜ Not Started | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
@@ -203,49 +203,51 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
-| P2-E1-S1 | Add `ortools>=9.8` to requirements.txt | ⬜ | `requirements.txt` |
-| P2-E1-S2 | Add `PLANNER_TYPE` to config | ⬜ | `app/core/config.py` |
-| P2-E1-S3 | Implement ORToolsPlanner | ⬜ | `app/planners/ortools_planner.py` |
-| P2-E1-S4 | Update PlanningService with feature flag | ⬜ | `app/services/planning_service.py` |
-| P2-E1-VER | Set PLANNER_TYPE=ortools → plan returns optimized routes | ⬜ | Manual test |
+| P2-E1-S1 | Add `ortools>=9.8` to requirements.txt | ✅ | `requirements.txt` |
+| P2-E1-S2 | Add `PLANNER_TYPE` to config | ✅ | `app/core/config.py` (already existed) |
+| P2-E1-S3 | Implement ORToolsPlanner | ✅ | `app/planners/ortools_planner.py` |
+| P2-E1-S4 | Update PlanningService with feature flag | ✅ | `app/services/planning_service.py` |
+| P2-E1-VER | Set PLANNER_TYPE=ortools → plan returns optimized routes | ✅ | 33/33 assigned, 3 routes, planner=ortools confirmed |
 
-### P2-E2: Multi-LLM Provider ⬜
-
-| ID | Story | Status | File |
-|----|-------|--------|------|
-| P2-E2-S1 | Add LangChain deps (langchain, langgraph, langchain-openai, langchain-anthropic, langchain-google-genai) | ⬜ | `requirements.txt` |
-| P2-E2-S2 | Add llm_provider/llm_api_key/llm_model to TenantConfig model | ⬜ | `app/models/tenant.py` |
-| P2-E2-S3 | Alembic migration for LLM columns | ⬜ | `alembic/versions/` |
-| P2-E2-S4 | Implement LLMProviderFactory | ⬜ | `app/core/llm_factory.py` |
-| P2-E2-S5 | PATCH /tenants/config/llm endpoint | ⬜ | `app/api/v1/tenants.py` |
-| P2-E2-S6 | Add LLM env vars to .env + docker-compose | ⬜ | `.env`, `docker-compose.yml` |
-| P2-E2-VER | Gemini key in tenant config → factory returns ChatGoogleGenerativeAI | ⬜ | Unit test |
-
-### P2-E3: LangGraph Agent ⬜
+### P2-E2: Multi-LLM Provider ✅
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
-| P2-E3-S1 | AgentLog model | ⬜ | `app/models/agent_log.py` |
-| P2-E3-S2 | Alembic migration for agent_logs | ⬜ | `alembic/versions/` |
-| P2-E3-S3 | LangGraph agent (fetch → optimize → explain) | ⬜ | `app/planners/langgraph_agent.py` |
-| P2-E3-S4 | Agent logs API endpoint | ⬜ | `app/api/v1/agent_logs.py` |
-| P2-E3-S5 | Register agent_logs router | ⬜ | `app/api/router.py` |
-| P2-E3-S6 | Update PlanResult schema (planner + explanation fields) | ⬜ | `app/schemas/route_plan.py` |
-| P2-E3-VER | PLANNER_TYPE=langgraph → agent runs, logs stored, explanation returned | ⬜ | Manual test |
+| P2-E2-S1 | Add LangChain deps (langchain-core, langchain-google-genai, langchain-openai, langchain-anthropic, langgraph) | ✅ | `requirements.txt` |
+| P2-E2-S2 | LLM config stored as TenantConfig KV rows (no migration needed) | ✅ | existing `tenant_configs` table |
+| P2-E2-S3 | No migration needed — uses existing KV store | ✅ | — |
+| P2-E2-S4 | Implement LLMProviderFactory | ✅ | `app/core/llm_factory.py` |
+| P2-E2-S5 | GET + PATCH /tenants/config/llm endpoints | ✅ | `app/api/v1/tenants.py` |
+| P2-E2-S6 | Add LLM env vars to .env + docker-compose | ✅ | `.env`, `docker-compose.yml` |
+| P2-E2-VER | GET returns system default, PATCH persists to KV store, provider switch works | ✅ | Live API test confirmed |
 
-### P2-E4: Real-Time GPS Tracking ⬜
+### P2-E3: LangGraph Agent ✅
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
-| P2-E4-S1 | DriverLocationPing model | ⬜ | `app/models/tracking.py` |
-| P2-E4-S2 | Alembic migration for tracking table | ⬜ | `alembic/versions/` |
-| P2-E4-S3 | TrackingService (record ping + Redis cache) | ⬜ | `app/services/tracking_service.py` |
-| P2-E4-S4 | Add get_redis() to db.py | ⬜ | `app/core/db.py` |
-| P2-E4-S5 | Tracking endpoints (ping / live / history) | ⬜ | `app/api/v1/tracking.py` |
-| P2-E4-S6 | Register tracking router | ⬜ | `app/api/router.py` |
-| P2-E4-S7 | Driver app geo-ping useEffect (every 30s) | ⬜ | `src/pages/DriverView.tsx` |
-| P2-E4-S8 | Frontend tracking API client | ⬜ | `src/api/tracking.ts` |
-| P2-E4-VER | Driver ping → Redis updated → live endpoint returns position | ⬜ | Manual test |
+| P2-E3-S1 | AgentLog model | ✅ | `app/models/agent_log.py` |
+| P2-E3-S2 | Alembic migration for agent_logs | ✅ | `alembic/versions/486e6906d442_p2_e3_agent_logs.py` |
+| P2-E3-S3 | LangGraph agent (fetch → optimize → explain) | ✅ | `app/planners/langgraph_agent.py` |
+| P2-E3-S4 | Agent logs API endpoint | ✅ | `app/api/v1/agent_logs.py` |
+| P2-E3-S5 | Register agent_logs router | ✅ | `app/api/router.py` |
+| P2-E3-S6 | planner + explanation fields in response (dict fields, no schema change needed) | ✅ | `langgraph_agent.py` adds them |
+| P2-E3-VER | PLANNER_TYPE=langgraph → fetch+optimize+explain logged, explanation returned | ✅ | 3 agent log steps confirmed, 33/33 assigned |
+
+### P2-E4: Real-Time GPS Tracking ✅
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| P2-E4-S1 | DriverLocationPing model | ✅ | `app/models/tracking.py` |
+| P2-E4-S2 | Alembic migration for tracking table | ✅ | `alembic/versions/3abca364f966_p2_e4_driver_location_pings.py` |
+| P2-E4-S3 | TrackingService (record ping + Redis cache) | ✅ | `app/services/tracking_service.py` |
+| P2-E4-S4 | Add get_redis() to db.py | ✅ | `app/core/db.py` |
+| P2-E4-S5 | Tracking endpoints (ping / live / history) | ✅ | `app/api/v1/tracking.py` |
+| P2-E4-S6 | Register tracking router | ✅ | `app/api/router.py` |
+| P2-E4-S7 | Driver app geo-ping useEffect (every 30s) | ✅ | `src/pages/DriverView.tsx` |
+| P2-E4-S8 | Frontend tracking API client | ✅ | `src/api/tracking.ts` |
+| P2-E4-S9 | `POST /plan/replan` endpoint (single driver or full fleet) | ✅ | `app/api/v1/planning.py` |
+| P2-E4-VER | Driver ping → Redis updated → live endpoint returns position | ✅ | 2 pings stored, Redis cache confirmed, live returns 1 driver |
+| P2-E4-VER2 | Replan returns updated assignments with `"replan": true` | ✅ | 33/33 assigned, replan=True confirmed |
 
 ### P2-E5: Live Map Dashboard ⬜
 

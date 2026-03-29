@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     # Planner (used in P1-E4)
     PLANNER_TYPE: str = "rule_based"
 
+    # LLM — system-wide defaults (tenants can override via TenantConfig KV store)
+    LLM_PROVIDER: str = "gemini"          # gemini | openai | anthropic
+    GEMINI_API_KEY: Optional[str] = None
+    OPENAI_API_KEY: Optional[str] = None
+    ANTHROPIC_API_KEY: Optional[str] = None
+
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
 
