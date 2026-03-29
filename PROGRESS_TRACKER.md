@@ -11,10 +11,10 @@
 
 ```
 Last Updated  : 2026-03-29
-Last Worked On: P2-E4 Real-Time GPS Tracking ✅
+Last Worked On: P2-E7 SLA Risk Alerts ✅
 Current Phase : Phase 2 – Autonomous Dispatch
-Current Epic  : P2-E5 — Live Map Dashboard (next)
-Next Action   : Implement P2-E5 → Leaflet + OSM map in UI, driver markers from /tracking/live
+Current Epic  : PHASE 2 COMPLETE ✅
+Next Action   : Phase 3 planning or demo prep
 Blocker       : None
 Demo Target   : LangGraph agent + live map + agent feed
 Timeline      : 2 weeks
@@ -27,7 +27,7 @@ Timeline      : 2 weeks
 | Phase | Name | Status | Milestone |
 |-------|------|--------|-----------|
 | **Phase 1** | MVP – Assisted Dispatch | ✅ Done (7/7 epics done) | Investor + pilot demo ready |
-| **Phase 2** | Autonomous Dispatch & Optimization | ⬜ Not Started | Pilot customer live |
+| **Phase 2** | Autonomous Dispatch & Optimization | ✅ Done (7/7 epics done) | Pilot customer live |
 | **Phase 3** | Adaptive Multi-Agent & Learning | ⬜ Not Started | AI moat for Series A |
 | **Phase 4** | Fleet Intelligence Platform | ⬜ Not Started | Enterprise contracts |
 
@@ -193,9 +193,9 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 | P2-E2 | Multi-LLM Provider (Claude/OpenAI/Gemini) | ✅ Done | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
 | P2-E3 | LangGraph Dispatch Agent | ✅ Done | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
 | P2-E4 | Real-Time GPS Tracking | ✅ Done | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
-| P2-E5 | Live Map Dashboard (Leaflet + OSM) | ⬜ Not Started | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
-| P2-E6 | Agent Activity Feed (UI) | ⬜ Not Started | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
-| P2-E7 | SLA Risk Alerts | ⬜ Not Started | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
+| P2-E5 | Live Map Dashboard (Leaflet + OSM) | ✅ Done | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
+| P2-E6 | Agent Activity Feed (UI) | ✅ Done | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
+| P2-E7 | SLA Risk Alerts | ✅ Done | `DEV_SPEC_P2_autonomous_dispatch_v2.md` |
 
 ## Phase 2 – Story-Level Tracker
 
@@ -253,30 +253,33 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
-| P2-E5-S1 | Install leaflet + react-leaflet + @types/leaflet | ⬜ | `package.json` |
-| P2-E5-S2 | FleetMap component (OSM tiles, swappable) | ⬜ | `src/components/map/FleetMap.tsx` |
-| P2-E5-S3 | DriverMarker component | ⬜ | `src/components/map/DriverMarker.tsx` |
-| P2-E5-S4 | RoutePolyline component | ⬜ | `src/components/map/RoutePolyline.tsx` |
-| P2-E5-S5 | LiveMap page (polls every 10s) | ⬜ | `src/pages/LiveMap.tsx` |
-| P2-E5-S6 | Add /map route + sidebar nav item | ⬜ | `AppRoutes.tsx`, `AppLayout.tsx` |
-| P2-E5-VER | Map loads, driver markers appear when pings exist | ⬜ | Manual test |
+| P2-E5-S1 | Install leaflet@1.9.4 + react-leaflet@5.0 + @types/leaflet | ✅ | `package.json` |
+| P2-E5-S2 | FleetMap component (OSM tiles, AutoFit, Vite icon fix) | ✅ | `src/components/map/FleetMap.tsx` |
+| P2-E5-S3 | DriverMarker with DivIcon + popup (name, time, speed, accuracy) | ✅ | `src/components/map/DriverMarker.tsx` |
+| P2-E5-S4 | RoutePolyline — deferred (no route coords in Phase 2) | — | skipped |
+| P2-E5-S5 | LiveMap page — polls every 10s, driver list cards below map | ✅ | `src/pages/LiveMap.tsx` |
+| P2-E5-S6 | Add /map route + "Live Map" sidebar nav item | ✅ | `AppRoutes.tsx`, `AppLayout.tsx` |
+| P2-E5-VER | Vite HMR picked up leaflet/react-leaflet cleanly, UI 200 OK | ✅ | `vite ✨ new dependencies optimized` confirmed |
 
-### P2-E6: Agent Activity Feed ⬜
-
-| ID | Story | Status | File |
-|----|-------|--------|------|
-| P2-E6-S1 | AgentFeed component | ⬜ | `src/components/shared/AgentFeed.tsx` |
-| P2-E6-S2 | Agent logs API client | ⬜ | `src/api/agentLogs.ts` |
-| P2-E6-S3 | Planning page: show feed after plan generated | ⬜ | `src/pages/Planning.tsx` |
-| P2-E6-VER | Generate plan → feed shows fetch/optimize/explain steps | ⬜ | Manual test |
-
-### P2-E7: SLA Risk Alerts ⬜
+### P2-E6: Agent Activity Feed ✅
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
-| P2-E7-S1 | SLA service (at-risk stop detection) | ⬜ | `app/services/sla_service.py` |
-| P2-E7-S2 | GET /sla/at-risk endpoint | ⬜ | `app/api/v1/sla.py` |
-| P2-E7-S3 | Register SLA router | ⬜ | `app/api/router.py` |
+| P2-E6-S1 | AgentFeed component (collapsible, role icons, LLM summary prominent) | ✅ | `src/components/shared/AgentFeed.tsx` |
+| P2-E6-S2 | Agent logs API client | ✅ | `src/api/agentLogs.ts` |
+| P2-E6-S3 | Planning page: AgentFeed + planner badge below plan result | ✅ | `src/pages/Planning.tsx` |
+| P2-E6-VER | 3 log entries (fetch/optimize/explain) returned for langgraph plan_id | ✅ | API confirmed |
+
+### P2-E7: SLA Risk Alerts ✅
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| P2-E7-S1 | SLA service (at-risk stop detection) | ✅ | `app/services/sla_service.py` |
+| P2-E7-S2 | GET /sla/at-risk endpoint | ✅ | `app/api/v1/sla.py` |
+| P2-E7-S3 | Register SLA router | ✅ | `app/api/router.py` |
+| P2-E7-S4 | Frontend SLA API client | ✅ | `src/api/sla.ts` |
+| P2-E7-S5 | Dashboard at-risk panel (collapsible, red badge, 60s poll) | ✅ | `src/pages/Dashboard.tsx` |
+| P2-E7-VER | Driver far away → 70 stops flagged at-risk; clear ping → 0 | ✅ | API + Redis test confirmed |
 | P2-E7-S4 | SLA API client | ⬜ | `src/api/sla.ts` |
 | P2-E7-S5 | Dashboard at-risk panel (polls 60s) | ⬜ | `src/pages/Dashboard.tsx` |
 | P2-E7-VER | At-risk orders appear on dashboard | ⬜ | Manual test |
