@@ -373,3 +373,22 @@ See **[DEMO_GUIDE.md](./DEMO_GUIDE.md)** for the full step-by-step investor demo
 | **Phase 2** | Planned | OR-Tools VRPTW optimisation, LangGraph autonomous dispatch agent, real-time re-planning |
 | **Phase 3** | Planned | Adaptive multi-agent learning, SLA risk prediction, anomaly detection |
 | **Phase 4** | Planned | Enterprise fleet intelligence, multi-depot optimisation, enterprise SSO |
+
+---
+
+## Remote Database Seeding (Render Deployment)
+
+If you have deployed the application to Render using Docker (which does not provide Shell access on the free tier), you can run initial database migrations and seed data directly from your local machine.
+
+1. Copy the **External Database URL** from your Render PostgreSQL instance dashboard.
+2. In your local `FleetOpsX-API` folder, activate your virtual environment:
+   ```bash
+   source venv/bin/activate
+   ```
+3. Export the database URL and run the Alembic and seeder commands:
+   ```bash
+   export DATABASE_URL="YOUR_RENDER_EXTERNAL_DB_URL"
+   alembic upgrade head
+   python scripts/seed_data.py
+   ```
+

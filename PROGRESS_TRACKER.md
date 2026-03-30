@@ -143,36 +143,36 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 | P1-E4-S5 | Register planning router | ✅ | `app/api/router.py` |
 | P1-E4-VER | App imports clean | ✅ | python import check passed |
 
-### P1-E5: Ops Dashboard UI ⬜
+### P1-E5: Ops Dashboard UI ✅
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
-| P1-E5-T | TypeScript types | ⬜ | `src/types/index.ts` |
-| P1-E5-API | API client modules (6 files) | ⬜ | `src/api/` |
-| P1-E5-STORE | Update zustand store | ⬜ | `src/store/useAppStore.ts` |
-| P1-E5-ROUTE | ProtectedRoute + AppRoutes update | ⬜ | `src/routes/` |
-| P1-E5-LOGIN | Login page (full implementation) | ⬜ | `src/pages/Login.tsx` |
-| P1-E5-LAYOUT | AppLayout with sidebar | ⬜ | `src/components/layout/AppLayout.tsx` |
-| P1-E5-DASH | Dashboard page (stats + quick action) | ⬜ | `src/pages/Dashboard.tsx` |
-| P1-E5-PLAN | Planning page (key demo screen) | ⬜ | `src/pages/Planning.tsx` |
-| P1-E5-SHARED | Shared components: FormModal, DataTable, StatusBadge, FormField, ToggleSwitch | ⬜ | `src/components/shared/` |
-| P1-E5-ORD | Orders — full CRUD (table + create/edit modal + filters) | ⬜ | `src/pages/Orders.tsx` |
-| P1-E5-DRV | Drivers — full CRUD (table + create/edit modal + depot dropdown) | ⬜ | `src/pages/Drivers.tsx` |
-| P1-E5-VEH | Vehicles — full CRUD (table + create/edit modal + refrigerated toggle) | ⬜ | `src/pages/Vehicles.tsx` |
-| P1-E5-DEP | Depots — full CRUD (table + create/edit modal + lat/lng fields) | ⬜ | `src/pages/Depots.tsx` |
-| P1-E5-COMP | Shared components (StatusBadge, Spinner, EmptyState) | ⬜ | `src/components/shared/` |
-| P1-E5-VER | UI loads, login works, planning screen generates plan | ⬜ | Manual test |
+| P1-E5-T | TypeScript types | ✅ | `src/types/index.ts` |
+| P1-E5-API | API client modules (6 files) | ✅ | `src/api/` |
+| P1-E5-STORE | Update zustand store | ✅ | `src/store/useAppStore.ts` |
+| P1-E5-ROUTE | ProtectedRoute + AppRoutes update | ✅ | `src/routes/` |
+| P1-E5-LOGIN | Login page (full implementation) | ✅ | `src/pages/Login.tsx` |
+| P1-E5-LAYOUT | AppLayout with sidebar | ✅ | `src/components/layout/AppLayout.tsx` |
+| P1-E5-DASH | Dashboard page (stats + quick action) | ✅ | `src/pages/Dashboard.tsx` |
+| P1-E5-PLAN | Planning page (key demo screen) | ✅ | `src/pages/Planning.tsx` |
+| P1-E5-SHARED | Shared components: FormModal, DataTable, StatusBadge, FormField, ToggleSwitch | ✅ | `src/components/shared/` |
+| P1-E5-ORD | Orders — full CRUD (table + create/edit modal + filters) | ✅ | `src/pages/Orders.tsx` |
+| P1-E5-DRV | Drivers — full CRUD (table + create/edit modal + depot dropdown) | ✅ | `src/pages/Drivers.tsx` |
+| P1-E5-VEH | Vehicles — full CRUD (table + create/edit modal + refrigerated toggle) | ✅ | `src/pages/Vehicles.tsx` |
+| P1-E5-DEP | Depots — full CRUD (table + create/edit modal + lat/lng fields) | ✅ | `src/pages/Depots.tsx` |
+| P1-E5-COMP | Shared components (StatusBadge, Spinner, EmptyState) | ✅ | `src/components/shared/` |
+| P1-E5-VER | UI loads, login works, planning screen generates plan | ✅ | Manual test |
 
-### P1-E6: Driver View ⬜
+### P1-E6: Driver View ✅
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
-| P1-E6-API | Backend driver endpoints | ⬜ | `app/api/v1/driver.py` |
-| P1-E6-REG | Register driver router | ⬜ | `app/api/router.py` |
-| P1-E6-FE | Frontend API client | ⬜ | `src/api/driver.ts` |
-| P1-E6-PAGE | DriverView page | ⬜ | `src/pages/DriverView.tsx` |
-| P1-E6-SEED | Link driver email in seed script | ⬜ | `scripts/seed_data.py` |
-| P1-E6-VER | Driver sees stops + marks delivered | ⬜ | Manual test |
+| P1-E6-API | Backend driver endpoints | ✅ | `app/api/v1/driver.py` |
+| P1-E6-REG | Register driver router | ✅ | `app/api/router.py` |
+| P1-E6-FE | Frontend API client | ✅ | `src/api/driver.ts` |
+| P1-E6-PAGE | DriverView page | ✅ | `src/pages/DriverView.tsx` |
+| P1-E6-SEED | Link driver email in seed script | ✅ | `scripts/seed_data.py` |
+| P1-E6-VER | Driver sees stops + marks delivered | ✅ | Manual test |
 
 ### P1-E7: Synthetic Data & Demo ✅
 
@@ -199,7 +199,7 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 
 ## Phase 2 – Story-Level Tracker
 
-### P2-E1: OR-Tools VRPTW ⬜
+### P2-E1: OR-Tools VRPTW ✅
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
@@ -249,7 +249,7 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 | P2-E4-VER | Driver ping → Redis updated → live endpoint returns position | ✅ | 2 pings stored, Redis cache confirmed, live returns 1 driver |
 | P2-E4-VER2 | Replan returns updated assignments with `"replan": true` | ✅ | 33/33 assigned, replan=True confirmed |
 
-### P2-E5: Live Map Dashboard ⬜
+### P2-E5: Live Map Dashboard ✅
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
@@ -280,9 +280,6 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 | P2-E7-S4 | Frontend SLA API client | ✅ | `src/api/sla.ts` |
 | P2-E7-S5 | Dashboard at-risk panel (collapsible, red badge, 60s poll) | ✅ | `src/pages/Dashboard.tsx` |
 | P2-E7-VER | Driver far away → 70 stops flagged at-risk; clear ping → 0 | ✅ | API + Redis test confirmed |
-| P2-E7-S4 | SLA API client | ⬜ | `src/api/sla.ts` |
-| P2-E7-S5 | Dashboard at-risk panel (polls 60s) | ⬜ | `src/pages/Dashboard.tsx` |
-| P2-E7-VER | At-risk orders appear on dashboard | ⬜ | Manual test |
 
 ## Phase 3 – Epic Status
 
@@ -307,7 +304,7 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 | P3-E1-S7 | `recharts` added to package.json + frontend API client | ✅ | `src/api/analytics.ts` |
 | P3-E1-S8 | Analytics page (KPI cards + charts + driver leaderboard) | ✅ | `src/pages/Analytics.tsx` |
 | P3-E1-S9 | Add `/analytics` route + nav item | ✅ | `AppRoutes.tsx`, `AppLayout.tsx` |
-| P3-E1-VER | Run ETL → GET /analytics/kpis returns data → charts render | ⬜ | Manual test |
+| P3-E1-VER | Run ETL → GET /analytics/kpis returns data → charts render | ✅ | Manual test |
 
 ### P3-E2: Multi-Agent Orchestration ✅
 
@@ -323,7 +320,7 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 | P3-E2-S8 | `AgentSuggestionOut` + `AgentSuggestionUpdate` schemas | ✅ | `app/schemas/agent_suggestion.py` |
 | P3-E2-S9 | `GET /agent/suggestions` + `PATCH /agent/suggestions/{id}` endpoints | ✅ | `app/api/v1/agent_suggestions.py` |
 | P3-E2-S10 | Register agent_suggestions router | ✅ | `app/api/router.py` |
-| P3-E2-VER | PLANNER_TYPE=multi_agent → forecast step in response, agent logs show 4 steps | ⬜ | Manual test |
+| P3-E2-VER | PLANNER_TYPE=multi_agent → forecast step in response, agent logs show 4 steps | ✅ | Manual test |
 
 ### P3-E3: Proactive Planning & Suggested Actions UI ✅
 
@@ -336,7 +333,7 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 | P3-E3-S5 | Add `SuggestedActions` to Dashboard below SLA panel | ✅ | `src/pages/Dashboard.tsx` |
 | P3-E3-S6 | Planning page PENDING suggestions badge | ✅ | `src/pages/Planning.tsx` |
 | P3-E3-S7 | Add `AgentSuggestion` type to frontend types | ✅ | `src/types/index.ts` |
-| P3-E3-VER | Monitor scan creates suggestion → appears in UI → Accept triggers replan | ⬜ | Manual test |
+| P3-E3-VER | Monitor scan creates suggestion → appears in UI → Accept triggers replan | ✅ | Manual test |
 
 ## Phase 4 – Epic Status
 
