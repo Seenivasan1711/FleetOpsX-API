@@ -23,8 +23,10 @@ from sqlalchemy.orm import Session
 
 from app.models.driver import Driver
 from app.models.driver_shift import DriverShift
+from app.models.driver_availability import DriverAvailability
 from app.models.order import Order
 from app.models.route_plan import Route, RoutePlan, RouteStop
+from app.planners.cost_model import get_weights
 from app.planners.interface import PlannerInterface
 
 # Fallback depot coords (Bangalore centre) used when driver has no home depot
@@ -71,7 +73,15 @@ class ORToolsPlanner(PlannerInterface):
       index 1 .. N     = one node per order
     """
 
-    def plan_day(self, db: Session, tenant_id: str, plan_date: date) -> dict[str, Any]:
+    def plan_day(
+        self,
+        db: Session,
+        tenant_id: str,
+        plan_date: date,
+        plan_mode: str = "balanced",
+        commit_assignments: bool = True,
+    ) -> dict[str, Any]:
+        weights = get_weights(plan_mode)
         tid = UUID(tenant_id)
         day_start = datetime.combine(plan_date, datetime.min.time())
         day_end = day_start + timedelta(days=1)
@@ -93,6 +103,7 @@ class ORToolsPlanner(PlannerInterface):
                 "assignments": [], "plan_id": None,
                 "plan_date": str(plan_date), "status": "DRAFT",
                 "total_orders": 0, "assigned_orders": 0, "total_routes": 0,
+                "ai_summary": None, "confidence_score": None, "reasoning_steps": [], "warnings": [],
                 "planner": "ortools",
             }
 
@@ -111,6 +122,15 @@ class ORToolsPlanner(PlannerInterface):
             )
         ).scalars().all())
         unavailable_ids = {s.driver_id for s in shifts if s.status != "WORKING"}
+
+        avail_records = list(db.execute(
+            select(DriverAvailability).where(
+                DriverAvailability.tenant_id == tid,
+                DriverAvailability.date == plan_date,
+            )
+        ).scalars().all())
+        unavailable_ids |= {r.driver_id for r in avail_records if r.status != "available"}
+
         drivers = [d for d in drivers if d.id not in unavailable_ids]
 
         if not drivers:
@@ -119,6 +139,7 @@ class ORToolsPlanner(PlannerInterface):
                 "assignments": [], "plan_id": None,
                 "plan_date": str(plan_date), "status": "DRAFT",
                 "total_orders": len(orders), "assigned_orders": 0, "total_routes": 0,
+                "ai_summary": None, "confidence_score": None, "reasoning_steps": [], "warnings": [],
                 "planner": "ortools",
             }
 
@@ -141,7 +162,7 @@ class ORToolsPlanner(PlannerInterface):
         n_vehicles = len(drivers)
         depot_idx = 0
 
-        # ── 4. Build travel-time matrix (minutes, integer) ───────────────────
+        # ── 4. Build travel-time and distance matrices ────────────────────────
         time_matrix: list[list[int]] = [
             [
                 _travel_minutes(locations[i][0], locations[i][1],
@@ -151,21 +172,42 @@ class ORToolsPlanner(PlannerInterface):
             ]
             for i in range(n_nodes)
         ]
+        # distance in 100-metre units (integer) for OR-Tools
+        dist_matrix: list[list[int]] = [
+            [
+                int(_haversine_km(locations[i][0], locations[i][1],
+                                  locations[j][0], locations[j][1]) * 10)
+                if i != j else 0
+                for j in range(n_nodes)
+            ]
+            for i in range(n_nodes)
+        ]
+        tw = weights["time_weight"]
+        dw = weights["dist_weight"]
+        # Combined cost matrix (integer, scaled so it fits OR-Tools integer constraints)
+        cost_matrix: list[list[int]] = [
+            [int(tw * time_matrix[i][j] + dw * dist_matrix[i][j]) for j in range(n_nodes)]
+            for i in range(n_nodes)
+        ]
 
         # ── 5. OR-Tools model ─────────────────────────────────────────────────
         manager = pywrapcp.RoutingIndexManager(n_nodes, n_vehicles, depot_idx)
         routing = pywrapcp.RoutingModel(manager)
 
         def _transit_callback(from_idx: int, to_idx: int) -> int:
+            return cost_matrix[manager.IndexToNode(from_idx)][manager.IndexToNode(to_idx)]
+
+        def _time_callback(from_idx: int, to_idx: int) -> int:
             return time_matrix[manager.IndexToNode(from_idx)][manager.IndexToNode(to_idx)]
 
         transit_cb = routing.RegisterTransitCallback(_transit_callback)
+        time_cb = routing.RegisterTransitCallback(_time_callback)
         routing.SetArcCostEvaluatorOfAllVehicles(transit_cb)
 
         # Time dimension — full day (1440 min = 24 hours).
         # Using minutes-since-midnight so time windows can be expressed directly.
         routing.AddDimension(
-            transit_cb,
+            time_cb,
             slack_max=120,      # up to 2 hours early wait at a stop
             capacity=1440,      # 24-hour day
             fix_start_cumul_to_zero=False,  # vehicles can start mid-day
@@ -223,16 +265,17 @@ class ORToolsPlanner(PlannerInterface):
             status="DRAFT",
             tenant_id=tid,
             total_orders=len(orders),
-            planner_version="ortools_vrptw_v1",
+            planner_version=f"ortools_vrptw_v1_{plan_mode}",
         )
         db.add(plan)
         db.flush()
 
         assignments: list[dict] = []
         routes_created = 0
+        total_distance_km = 0.0
+        total_duration_min = 0
 
         for vehicle_idx, driver in enumerate(drivers):
-            # Walk this vehicle's route in the solution
             idx = routing.Start(vehicle_idx)
             stop_sequence: list[Order] = []
 
@@ -243,7 +286,21 @@ class ORToolsPlanner(PlannerInterface):
                 idx = solution.Value(routing.NextVar(idx))
 
             if not stop_sequence:
-                continue  # driver has no stops in this solution
+                continue
+
+            # Compute route-level distance + duration (depot → stops → depot)
+            route_nodes = [0] + [orders.index(o) + 1 for o in stop_sequence] + [0]
+            route_dist = sum(
+                _haversine_km(locations[route_nodes[i]][0], locations[route_nodes[i]][1],
+                              locations[route_nodes[i + 1]][0], locations[route_nodes[i + 1]][1])
+                for i in range(len(route_nodes) - 1)
+            )
+            route_dur = sum(
+                time_matrix[route_nodes[i]][route_nodes[i + 1]]
+                for i in range(len(route_nodes) - 1)
+            )
+            total_distance_km += route_dist
+            total_duration_min += route_dur
 
             route = Route(
                 plan_id=plan.id,
@@ -251,6 +308,8 @@ class ORToolsPlanner(PlannerInterface):
                 status="PLANNED",
                 tenant_id=tid,
                 total_stops=len(stop_sequence),
+                estimated_distance_km=round(route_dist, 2),
+                estimated_duration_minutes=route_dur,
             )
             db.add(route)
             db.flush()
@@ -266,8 +325,9 @@ class ORToolsPlanner(PlannerInterface):
                 )
                 db.add(stop)
 
-                order.assigned_driver_id = driver.id
-                order.status = "ASSIGNED"
+                if commit_assignments:
+                    order.assigned_driver_id = driver.id
+                    order.status = "ASSIGNED"
 
                 assignments.append({
                     "order_id": str(order.id),
@@ -281,14 +341,23 @@ class ORToolsPlanner(PlannerInterface):
 
         db.commit()
 
+        fuel_cost_per_km = weights["fuel_cost_per_km"]
         return {
             "plan_id": str(plan.id),
             "plan_date": str(plan_date),
             "status": "DRAFT",
+            "plan_mode": plan_mode,
             "total_orders": len(orders),
             "assigned_orders": len(assignments),
             "total_routes": routes_created,
+            "total_distance_km": round(total_distance_km, 2),
+            "est_duration_min": total_duration_min,
+            "est_fuel_cost": round(total_distance_km * fuel_cost_per_km, 2),
             "assignments": assignments,
+            "ai_summary": None,
+            "confidence_score": None,
+            "reasoning_steps": [],
+            "warnings": [],
             "planner": "ortools",
         }
 

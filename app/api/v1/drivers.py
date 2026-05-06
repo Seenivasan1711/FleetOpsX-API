@@ -1,10 +1,13 @@
 from uuid import UUID
+from datetime import date
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, require_tenant_id
 from app.schemas.driver import DriverCreate, DriverUpdate, DriverResponse
+from app.schemas.availability import DriverAvailabilityUpdate, DriverAvailabilityResponse
 from app.services import driver_service
+from app.services import availability_service
 
 router = APIRouter(prefix="/drivers", tags=["Drivers"])
 
@@ -61,3 +64,17 @@ def delete_driver(
 ):
     if not driver_service.delete_driver(db, tenant_id, driver_id):
         raise HTTPException(status_code=404, detail="Driver not found")
+
+
+@router.patch("/{driver_id}/availability", response_model=DriverAvailabilityResponse)
+def patch_driver_availability(
+    driver_id: UUID,
+    data: DriverAvailabilityUpdate,
+    for_date: Optional[date] = None,
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(require_tenant_id),
+):
+    if not driver_service.get_driver(db, tenant_id, driver_id):
+        raise HTTPException(status_code=404, detail="Driver not found")
+    target_date = for_date or date.today()
+    return availability_service.upsert_driver_availability(db, tenant_id, driver_id, target_date, data)

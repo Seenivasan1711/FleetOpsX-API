@@ -2,12 +2,14 @@ from datetime import date
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_dispatcher
 from app.services.planning_service import PlanningService
+from app.services import plan_options_service
+from app.schemas.plan_options import PlanOptionsResponse, PlanConfirmRequest
 
 router = APIRouter(prefix="/plan", tags=["Planning"])
 
@@ -30,6 +32,46 @@ def plan_day(
     """
     service = PlanningService()
     return service.plan_day(db=db, tenant_id=str(current_user.tenant_id), plan_date=plan_date)
+
+
+@router.post("/options", response_model=PlanOptionsResponse)
+def plan_options(
+    plan_date: date = Query(..., description="Date to generate options for (YYYY-MM-DD)"),
+    db: Session = Depends(get_db),
+    current_user=Depends(require_dispatcher),
+):
+    """
+    Generate three plan variants (fastest / economical / balanced) for the given date.
+    Each variant is saved as a DRAFT plan. Call POST /plan/confirm to activate one.
+    Order assignments are NOT applied until confirm is called.
+    """
+    summaries = plan_options_service.generate_options(
+        db=db,
+        tenant_id=str(current_user.tenant_id),
+        plan_date=plan_date,
+    )
+    return PlanOptionsResponse(plan_date=plan_date, options=summaries)
+
+
+@router.post("/confirm")
+def plan_confirm(
+    data: PlanConfirmRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_dispatcher),
+):
+    """
+    Confirm a plan variant selected from /plan/options.
+    Applies order assignments, marks the plan PUBLISHED, and cancels the other DRAFT plans.
+    """
+    result = plan_options_service.confirm_plan(
+        db=db,
+        tenant_id=str(current_user.tenant_id),
+        plan_id=data.plan_id,
+        plan_date=data.plan_date,
+    )
+    if result is None:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    return result
 
 
 @router.post("/replan")

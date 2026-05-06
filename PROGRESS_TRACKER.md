@@ -10,14 +10,12 @@
 ## Quick Status ← UPDATE THIS EVERY SESSION
 
 ```
-Last Updated  : 2026-03-29
-Last Worked On: P3-E3 Proactive Planning & Suggested Actions UI ✅  (Phase 3 COMPLETE)
-Current Phase : Phase 3 complete — ready for Phase 4 or demo prep
-Current Epic  : P4-E1 — Multi-Region & Per-Tenant DB (next, if proceeding to Phase 4)
-Next Action   : Demo prep OR start P4-E1
+Last Updated  : 2026-05-05
+Last Worked On: Phase P — PP-E2 BE complete (plan options: fastest/economical/balanced + confirm)
+Current Phase : Phase P – Priority Features — ALL BE EPICS COMPLETE
+Current Epic  : Phase P fully done (BE + FE)
+Next Action   : Run migrations (alembic upgrade head) + smoke-test all new endpoints
 Blocker       : None
-Demo Target   : LangGraph agent + live map + agent feed
-Timeline      : 2 weeks
 ```
 
 ---
@@ -29,6 +27,7 @@ Timeline      : 2 weeks
 | **Phase 1** | MVP – Assisted Dispatch | ✅ Done (7/7 epics done) | Investor + pilot demo ready |
 | **Phase 2** | Autonomous Dispatch & Optimization | ✅ Done (7/7 epics done) | Pilot customer live |
 | **Phase 3** | Adaptive Multi-Agent & Learning | ✅ Done (3/3 epics done) | AI moat for Series A |
+| **Phase P** | Priority Features (NEW) | ⬜ Not Started (7 epics) | Demo-ready polish + power features |
 | **Phase 4** | Fleet Intelligence Platform | ⬜ Not Started | Enterprise contracts |
 
 ---
@@ -335,6 +334,151 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 | P3-E3-S7 | Add `AgentSuggestion` type to frontend types | ✅ | `src/types/index.ts` |
 | P3-E3-VER | Monitor scan creates suggestion → appears in UI → Accept triggers replan | ✅ | Manual test |
 
+## Phase P – Priority Features (NEW — implement before Phase 4)
+
+> These 7 epics were added 2026-04-30 as high-priority product features for demo readiness and product quality.
+> Complete ALL Phase P epics before starting Phase 4.
+
+| Epic | Name | Area | Status |
+|------|------|------|--------|
+| PP-E1 | Planning AI Enhancement | Backend + FE | 🟡 BE done · FE done |
+| PP-E2 | Multiple Plan Options (Fastest / Economical / Balanced) | Backend + FE | 🟡 BE done · FE done |
+| PP-E3 | Dynamic Conditions (Driver & Vehicle Availability) | Backend + FE | 🟡 BE done · FE done |
+| PP-E4 | Chat AI Interface | Backend + FE | 🟡 BE done · FE done |
+| PP-E5 | Excel Export / Import | Backend + FE | 🟡 BE done · FE done (pending router rename) |
+| PP-E6 | Map with Route Plans Overlay | Frontend | ✅ Done |
+| PP-E7 | UI Polish & Design Overhaul | Frontend | ✅ Done |
+
+---
+
+### PP-E1: Planning AI Enhancement
+> Smarter AI-driven planning with reasoning transparency, confidence scores, and natural-language plan summaries shown to the dispatcher.
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| PP-E1-S1 | Add `confidence_score` + `reasoning_steps` fields to plan response schema | ✅ | all planners return these fields |
+| PP-E1-S2 | LangGraph agent emits step-by-step reasoning (chain-of-thought) per route | ✅ | `app/planners/langgraph_agent.py` — `_node_explain` |
+| PP-E1-S3 | AI pre-planning analysis: flag risky orders before generating plan | ✅ | `app/planners/langgraph_agent.py` — `_node_analyze` |
+| PP-E1-S4 | Backend: POST /plan/day returns `ai_summary`, `confidence`, `warnings[]` | ✅ | `app/api/v1/planning.py` (passes through planner dict) |
+| PP-E1-S5 | Frontend: Planning page shows AI reasoning panel + confidence badge | ⬜ | `src/pages/Planning.tsx` |
+| PP-E1-S6 | Frontend: Pre-plan warnings shown before dispatcher confirms | ⬜ | `src/pages/Planning.tsx` |
+| PP-E1-VER | Planning returns reasoning + confidence; warnings surface in UI | ⬜ | Manual test |
+
+---
+
+### PP-E2: Multiple Plan Options (Fastest / Economical / Balanced)
+> Generate 3 distinct route plans and let the dispatcher pick the best one.
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| PP-E2-S1 | Cost model: fuel cost + time cost + distance weighting per plan type | ✅ | `app/planners/cost_model.py` |
+| PP-E2-S2 | ORToolsPlanner accepts `plan_mode` param: `fastest` / `economical` / `balanced` | ✅ | `app/planners/ortools_planner.py` — `plan_mode` + `commit_assignments` params |
+| PP-E2-S3 | POST /plan/options — runs all 3 modes, returns array of 3 plan summaries | ✅ | `app/api/v1/planning.py` + `app/services/plan_options_service.py` |
+| PP-E2-S4 | Plan summary schema: `mode`, `total_distance_km`, `est_duration_min`, `est_fuel_cost`, `orders_covered` | ✅ | `app/schemas/plan_options.py` |
+| PP-E2-S5 | POST /plan/confirm — confirm selected plan_id as active plan | ✅ | `app/api/v1/planning.py` |
+| PP-E2-S6 | Frontend: Plan options card layout (3 cards, side-by-side, metrics highlighted) | ⬜ | `src/components/planning/PlanOptionsCard.tsx` (new) |
+| PP-E2-S7 | Frontend: Planning page — "Generate Options" button → select → confirm flow | ⬜ | `src/pages/Planning.tsx` |
+| PP-E2-VER | 3 plan variants returned; dispatcher selects one; assignments applied | ⬜ | Manual test |
+
+---
+
+### PP-E3: Dynamic Conditions (Driver & Vehicle Availability)
+> Real-time availability of drivers and vehicles fed into the planner — unavailable resources excluded automatically.
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| PP-E3-S1 | `DriverAvailability` model: shift_start, shift_end, status (available/on_break/off_duty), hours_worked_today | ✅ | `app/models/driver_availability.py` |
+| PP-E3-S2 | `VehicleStatus` model: current_mileage, fuel_level_pct, status (available/in_use/maintenance) | ✅ | `app/models/vehicle_status.py` |
+| PP-E3-S3 | Alembic migration for new tables | ✅ | `alembic/versions/c3d4e5f6a7b8_pp_e3_...py` |
+| PP-E3-S4 | PATCH /drivers/{id}/availability — dispatcher marks driver available/off_duty | ✅ | `app/api/v1/drivers.py` |
+| PP-E3-S5 | PATCH /vehicles/{id}/status — dispatcher updates vehicle fuel/status | ✅ | `app/api/v1/vehicles.py` |
+| PP-E3-S6 | Planner reads availability before assigning — skips unavailable drivers/vehicles | ✅ | `app/planners/rule_based.py`, `app/planners/ortools_planner.py` |
+| PP-E3-S7 | GET /fleet/availability — summary of all driver + vehicle statuses | ✅ | `app/api/v1/fleet.py` |
+| PP-E3-S8 | Frontend: Drivers page — availability toggle (available / off duty / on break) | ⬜ | `src/pages/Drivers.tsx` |
+| PP-E3-S9 | Frontend: Vehicles page — fuel level + status badges | ⬜ | `src/pages/Vehicles.tsx` |
+| PP-E3-S10 | Frontend: Dashboard — fleet availability summary widget | ⬜ | `src/pages/Dashboard.tsx` |
+| PP-E3-VER | Off-duty driver excluded from plan; low-fuel vehicle excluded automatically | ⬜ | Manual test |
+
+---
+
+### PP-E4: Chat AI Interface
+> Conversational AI assistant embedded in the app — dispatchers ask questions in natural language and get instant answers.
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| PP-E4-S1 | Chat context builder: aggregates today's orders, drivers, vehicles, plan status | ✅ | `app/services/chat_context_service.py` |
+| PP-E4-S2 | POST /chat/message — LangChain-powered response with fleet context injected | ✅ | `app/api/v1/chat.py` |
+| PP-E4-S3 | Chat history model: `ChatMessage` (session_id, role, content, tenant_id) | ✅ | `app/models/chat_message.py` |
+| PP-E4-S4 | Alembic migration for chat_messages | ✅ | `alembic/versions/d4e5f6a7b8c9_pp_e4_chat_messages.py` |
+| PP-E4-S5 | GET /chat/history?session_id= — last 50 messages | ✅ | `app/api/v1/chat.py` |
+| PP-E4-S6 | Register chat router | ✅ | `app/api/router.py` |
+| PP-E4-S7 | Frontend: Chat sidebar panel (slide-in, message bubbles, input box) | ⬜ | `src/components/chat/ChatPanel.tsx` (new) |
+| PP-E4-S8 | Frontend: Chat API client | ⬜ | `src/api/chat.ts` (new) |
+| PP-E4-S9 | Frontend: Chat icon in header/nav → toggles panel on all pages | ⬜ | `src/components/layout/AppLayout.tsx` |
+| PP-E4-S10 | Seed chat suggestions: "How many orders unassigned?", "Which driver has most stops?" | ⬜ | `src/components/chat/ChatPanel.tsx` |
+| PP-E4-VER | Ask "what's the plan summary?" → AI responds with today's fleet context | ⬜ | Manual test |
+
+---
+
+### PP-E5: Excel Export / Import
+> Dispatchers can export orders and route plans to Excel, and import bulk orders via Excel template.
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| PP-E5-S1 | Add `openpyxl` to requirements.txt | ✅ | `requirements.txt` |
+| PP-E5-S2 | ExportService: orders → Excel | ✅ | `app/services/export_service.py` |
+| PP-E5-S3 | ExportService: route plan → Excel (route per sheet) | ✅ | `app/services/export_service.py` |
+| PP-E5-S4 | GET /export/orders | ✅ | `app/api/v1/export.py` |
+| PP-E5-S5 | GET /export/plan/{plan_id} | ✅ | `app/api/v1/export.py` |
+| PP-E5-S6 | ImportService: validate + parse Excel rows | ✅ | `app/services/import_service.py` |
+| PP-E5-S7 | POST /import/orders | ✅ | `app/api/v1/import_orders.py` |
+| PP-E5-S8 | GET /export/template | ✅ | `app/api/v1/export.py` |
+| PP-E5-S9 | Register export + import routers | ✅ | `app/api/router.py` (via router_new.py rename) |
+| PP-E5-S10 | Frontend: Orders page — "Export Orders" button + "Import Orders" file upload | ⬜ | `src/pages/Orders.tsx` |
+| PP-E5-S11 | Frontend: Planning page — "Export Plan" button after plan generated | ⬜ | `src/pages/Planning.tsx` |
+| PP-E5-S12 | Frontend: export/import API clients | ⬜ | `src/api/exportImport.ts` (new) |
+| PP-E5-VER | Export orders → valid .xlsx opens in Excel; import file creates orders in DB | ⬜ | Manual test |
+
+---
+
+### PP-E6: Map with Route Plans Overlay
+> Show planned routes as colored polylines on the live map, with stop markers and driver assignment visible.
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| PP-E6-S1 | GET /plan/{plan_id}/geodata — returns routes with ordered lat/lng arrays per route | ⬜ | `app/api/v1/planning.py` |
+| PP-E6-S2 | Enrich RouteStop with geocoded lat/lng at plan time (use customer coords) | ⬜ | `app/services/planning_service.py` |
+| PP-E6-S3 | Frontend: `RoutePolyline` component — Leaflet Polyline per route, color-coded by driver | ⬜ | `src/components/map/RoutePolyline.tsx` (new) |
+| PP-E6-S4 | Frontend: `StopMarker` component — numbered CircleMarker for each stop | ⬜ | `src/components/map/StopMarker.tsx` (new) |
+| PP-E6-S5 | Frontend: LiveMap page — toggle: "Live Tracking" vs "Route Plan" view | ⬜ | `src/pages/LiveMap.tsx` |
+| PP-E6-S6 | Frontend: Route plan view polls GET /plan/geodata and renders polylines + stops | ⬜ | `src/pages/LiveMap.tsx` |
+| PP-E6-S7 | Frontend: Map legend (driver name → color) | ⬜ | `src/components/map/MapLegend.tsx` (new) |
+| PP-E6-S8 | Frontend: Clicking a stop marker shows popup with order details | ⬜ | `src/components/map/StopMarker.tsx` |
+| PP-E6-VER | After plan generated: Live Map shows colored routes + numbered stops per driver | ⬜ | Manual test |
+
+---
+
+### PP-E7: UI Polish & Design Overhaul
+> Elevate the UI from functional to visually impressive — better typography, layout, color system, and micro-interactions.
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| PP-E7-S1 | Color system: establish brand palette (primary, accent, semantic colors) in Tailwind config | ⬜ | `tailwind.config.ts`, `src/index.css` |
+| PP-E7-S2 | Typography: consistent heading scale, font weight, line-height across all pages | ⬜ | `src/index.css`, global styles |
+| PP-E7-S3 | Sidebar redesign: icons + labels, active state, hover animations, collapse support | ⬜ | `src/components/layout/AppLayout.tsx` |
+| PP-E7-S4 | Dashboard redesign: KPI cards with trend indicators, better grid layout | ⬜ | `src/pages/Dashboard.tsx` |
+| PP-E7-S5 | Data tables: alternating rows, better hover states, column alignment | ⬜ | `src/components/shared/DataTable.tsx` |
+| PP-E7-S6 | Loading skeletons: replace spinners with shimmer skeleton cards | ⬜ | `src/components/shared/Skeleton.tsx` (new) |
+| PP-E7-S7 | Empty states: illustrated empty state with CTA for Orders, Drivers, Vehicles, Depots | ⬜ | `src/components/shared/EmptyState.tsx` |
+| PP-E7-S8 | Toast notifications: success/error toasts for all CRUD + plan actions | ⬜ | `src/components/shared/Toast.tsx` (new) |
+| PP-E7-S9 | Status badges: unified, color-coded system (green/amber/red/blue) across all entities | ⬜ | `src/components/shared/StatusBadge.tsx` |
+| PP-E7-S10 | Button variants: primary, secondary, danger — consistent across all pages | ⬜ | `src/components/shared/Button.tsx` (new) |
+| PP-E7-S11 | Planning page redesign: cleaner plan result display with route cards | ⬜ | `src/pages/Planning.tsx` |
+| PP-E7-S12 | Mobile responsiveness: all pages usable on tablet/mobile | ⬜ | all page files |
+| PP-E7-VER | All pages reviewed in browser; no layout breaks; visually consistent | ⬜ | Manual review |
+
+---
+
 ## Phase 4 – Epic Status
 
 | Epic | Name | Status | GENSPEC |
@@ -519,4 +663,4 @@ curl -s -X POST http://localhost:8000/api/v1/auth/login \
 
 ---
 
-*Last updated: 2026-03-29*
+*Last updated: 2026-04-30*

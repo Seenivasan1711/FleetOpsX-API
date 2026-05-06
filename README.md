@@ -18,6 +18,7 @@
 - [API Reference](#api-reference)
 - [Observability](#observability)
 - [Demo Walkthrough](#demo-walkthrough)
+- [Renewing the Render Free-Tier Database](#renewing-the-render-free-tier-database)
 
 ---
 
@@ -71,7 +72,8 @@ FleetOpsX-API/                  ← This repo (backend + docker-compose)
 │   └── services/               ← Business logic layer
 ├── alembic/                    ← Database migrations
 ├── scripts/
-│   └── seed_data.py            ← Bangalore demo data generator
+│   ├── seed_data.py            ← Bangalore demo data generator
+│   └── render_db_renew.sh      ← Renew expiring Render free-tier DB
 ├── docker-compose.yml          ← Full stack (DB, Redis, API, UI, Prometheus, Grafana)
 ├── Dockerfile                  ← API container
 └── .env                        ← Local environment variables
@@ -391,4 +393,76 @@ If you have deployed the application to Render using Docker (which does not prov
    alembic upgrade head
    python scripts/seed_data.py
    ```
+
+---
+
+## Renewing the Render Free-Tier Database
+
+Render free PostgreSQL instances are deleted after **90 days**. Use `scripts/render_db_renew.sh` to dump the expiring database, delete it, create a fresh one, and restore the dump — all in one command.
+
+### Prerequisites
+
+`pg_dump` must be **≥ the server's Postgres version** (Render currently runs **Postgres 18**).
+
+```bash
+# macOS — install pg_dump / pg_restore matching Render's server version
+brew install postgresql@18
+```
+
+Then set `PG_BIN` so the script uses the right binaries:
+
+```bash
+export PG_BIN=/opt/homebrew/opt/postgresql@18/bin
+```
+
+> If you're on Apple Silicon the path is `/opt/homebrew/...`; on Intel Mac it's `/usr/local/opt/...`.
+> Run `brew --prefix postgresql@18` to confirm the exact path on your machine.
+
+### Find your Render IDs
+
+You need three values before running the script:
+
+| Value | Where to find it |
+|-------|-----------------|
+| `RENDER_API_KEY` | Render dashboard → **Account Settings → API Keys** |
+| `RENDER_OWNER_ID` | Render dashboard URL: `https://dashboard.render.com/u/usr_xxxx` — copy the `usr_xxxx` part |
+| `OLD_DB_SERVICE_ID` | Run the command below to list DBs and grab the `"id"` of the expiring one |
+| `OLD_DB_CONN` | Render dashboard → your PostgreSQL service → **Connect** → **External Connection String** |
+
+```bash
+# List all postgres services to find OLD_DB_SERVICE_ID
+curl -fsSL -H "Authorization: Bearer YOUR_API_KEY" \
+  "https://api.render.com/v1/postgres?ownerId=YOUR_OWNER_ID" | python3 -m json.tool
+```
+
+> **Note:** The Render API does not return the connection string — you must copy `OLD_DB_CONN` manually from the dashboard.
+
+### Run the renewal script
+
+```bash
+export RENDER_API_KEY="rnd_xxxx"
+export RENDER_OWNER_ID="usr_xxxx"
+export OLD_DB_SERVICE_ID="dpg_xxxx"
+export OLD_DB_CONN="postgresql://fleetuser:password@host/fleetopsx"   # from Render dashboard → Connect
+export NEW_DB_NAME="fleetopsx-db"
+export PG_BIN=$(brew --prefix postgresql@18)/bin                      # must match Render's PG version
+export RENDER_DB_PLAN="free"                                           # free | starter | standard | pro
+
+./scripts/render_db_renew.sh
+```
+
+### What happens
+
+1. Fetches the expiring DB's connection string via Render API
+2. Dumps to `/tmp/fleetopsx_<timestamp>.dump` using `pg_dump`
+3. Deletes the old database on Render
+4. Creates a fresh database (same name, user, region) and waits for it to be ready (~5–10 min)
+5. Restores the dump with `pg_restore`
+6. Prints the new `DATABASE_URL`
+
+### After the script completes
+
+Copy the printed `DATABASE_URL` and update it in your Render web service:
+
+**Render dashboard → FleetOpsX API service → Environment → `DATABASE_URL` → Save → Restart service**
 

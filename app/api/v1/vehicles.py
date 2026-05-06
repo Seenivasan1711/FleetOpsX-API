@@ -4,7 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, require_tenant_id
 from app.schemas.vehicle import VehicleCreate, VehicleUpdate, VehicleResponse
+from app.schemas.availability import VehicleStatusUpdate, VehicleStatusResponse
 from app.services import vehicle_service
+from app.services import availability_service
 
 router = APIRouter(prefix="/vehicles", tags=["Vehicles"])
 
@@ -61,3 +63,15 @@ def delete_vehicle(
 ):
     if not vehicle_service.delete_vehicle(db, tenant_id, vehicle_id):
         raise HTTPException(status_code=404, detail="Vehicle not found")
+
+
+@router.patch("/{vehicle_id}/status", response_model=VehicleStatusResponse)
+def patch_vehicle_status(
+    vehicle_id: UUID,
+    data: VehicleStatusUpdate,
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(require_tenant_id),
+):
+    if not vehicle_service.get_vehicle(db, tenant_id, vehicle_id):
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    return availability_service.upsert_vehicle_status(db, tenant_id, vehicle_id, data)

@@ -8,6 +8,7 @@ from app.planners.interface import PlannerInterface
 from app.models.order import Order
 from app.models.driver import Driver
 from app.models.driver_shift import DriverShift
+from app.models.driver_availability import DriverAvailability
 from app.models.route_plan import RoutePlan, Route, RouteStop
 
 PRIORITY_ORDER = {"CRITICAL": 0, "HIGH": 1, "NORMAL": 2, "LOW": 3}
@@ -41,7 +42,8 @@ class RuleBasedPlanner(PlannerInterface):
         ).scalars().all())
 
         if not orders:
-            return {"message": "No unassigned orders for this date", "assignments": [], "plan_id": None}
+            return {"message": "No unassigned orders for this date", "assignments": [], "plan_id": None,
+                    "ai_summary": None, "confidence_score": None, "reasoning_steps": [], "warnings": []}
 
         # Sort by priority: CRITICAL first
         orders = sorted(orders, key=lambda o: PRIORITY_ORDER.get(o.priority, 99))
@@ -59,10 +61,21 @@ class RuleBasedPlanner(PlannerInterface):
             )
         ).scalars().all())
         unavailable_ids = {s.driver_id for s in shifts if s.status != "WORKING"}
+
+        # Also check real-time DriverAvailability (off_duty / on_break → skip)
+        avail_records = list(db.execute(
+            select(DriverAvailability).where(
+                DriverAvailability.tenant_id == tid,
+                DriverAvailability.date == plan_date,
+            )
+        ).scalars().all())
+        unavailable_ids |= {r.driver_id for r in avail_records if r.status != "available"}
+
         available_drivers = [d for d in drivers if d.id not in unavailable_ids]
 
         if not available_drivers:
-            return {"message": "No available drivers for this date", "assignments": [], "plan_id": None}
+            return {"message": "No available drivers for this date", "assignments": [], "plan_id": None,
+                    "ai_summary": None, "confidence_score": None, "reasoning_steps": [], "warnings": []}
 
         # 3. Create RoutePlan
         plan = RoutePlan(
@@ -154,6 +167,10 @@ class RuleBasedPlanner(PlannerInterface):
             "assigned_orders": len(assignments),
             "total_routes": len(driver_routes),
             "assignments": assignments,
+            "ai_summary": None,
+            "confidence_score": None,
+            "reasoning_steps": [],
+            "warnings": [],
         }
 
     def replan(self, db: Session, tenant_id: str, plan_date: date, context: dict[str, Any]) -> dict[str, Any]:
