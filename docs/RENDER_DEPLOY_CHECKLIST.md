@@ -11,7 +11,7 @@ Six migrations have been added since the last deploy. Run once from local (with 
 **From local machine:**
 ```bash
 cd FleetOpsX-API
-DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@db.YOUR_PROJECT.supabase.co:5432/postgres" \
+DATABASE_URL="postgresql://postgres:WakeUpToReality@db.whpvwyjjbrbzkavmncnq.supabase.co:5432/postgres" \
   venv/bin/alembic upgrade head
 ```
 
