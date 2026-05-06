@@ -73,11 +73,27 @@ def update_suggestion(
     if suggestion is None:
         raise HTTPException(status_code=404, detail="Suggestion not found")
 
+    before = {"status": suggestion.status}
     suggestion.status = new_status
     suggestion.acted_by = current_user.email or str(current_user.id)
 
     if new_status == "ACCEPTED":
         _handle_accepted(suggestion=suggestion, db=db, tenant_id=str(tid))
+
+    from app.services.audit_service import log_action
+    log_action(
+        db=db,
+        actor=current_user,
+        action=f"suggestion.{new_status.lower()}",
+        resource_type="agent_suggestion",
+        resource_id=suggestion_id,
+        before=before,
+        after={"status": new_status},
+        ai_context={
+            "suggestion_type": suggestion.suggestion_type,
+            "plan_date": str(suggestion.plan_date),
+        },
+    )
 
     db.commit()
     db.refresh(suggestion)

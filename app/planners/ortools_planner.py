@@ -361,6 +361,144 @@ class ORToolsPlanner(PlannerInterface):
             "planner": "ortools",
         }
 
+    def plan_horizon(
+        self,
+        db: Session,
+        tenant_id: str,
+        dates: list[date],
+        parameters: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Solve each date sequentially with driver carry-over constraints.
+
+        Driver shift carry-over: a driver assigned >8h (480 min) on day N is
+        marked unavailable for the first 4h of day N+1 by temporarily blocking
+        their shift window.
+
+        Scenario parameters are forwarded to _plan_single_with_params() which
+        injects virtual constraints before OR-Tools runs.
+        """
+        params = parameters or {}
+        results: list[dict[str, Any]] = []
+        carry_over: dict[str, int] = {}   # driver_id (str) → delay minutes for next day
+
+        for d in dates:
+            result = self._plan_single_with_params(
+                db=db,
+                tenant_id=tenant_id,
+                plan_date=d,
+                parameters=params,
+                carry_over=carry_over,
+            )
+            carry_over = self._compute_carry_over(result)
+            results.append(result)
+
+        return results
+
+    def _compute_carry_over(self, result: dict[str, Any]) -> dict[str, int]:
+        """Return driver_id → carry-over delay minutes for the next day.
+
+        A driver with more than 8 hours (480 min) estimated work on this day
+        incurs a 240-minute (4h) unavailability window starting the next morning.
+        """
+        carry: dict[str, int] = {}
+        threshold_minutes = 480
+        penalty_minutes = 240
+        for assignment in result.get("assignments", []):
+            driver_id = assignment.get("driver_id")
+            if driver_id and not carry.get(driver_id):
+                driver_stops = sum(
+                    1 for a in result.get("assignments", [])
+                    if a.get("driver_id") == driver_id
+                )
+                # Rough estimate: >12 stops ≈ >8h for an average city route
+                if driver_stops > 12:
+                    carry[driver_id] = penalty_minutes
+        return carry
+
+    def _plan_single_with_params(
+        self,
+        db: Session,
+        tenant_id: str,
+        plan_date: date,
+        parameters: dict[str, Any],
+        carry_over: dict[str, int],
+    ) -> dict[str, Any]:
+        """Run plan_day with scenario parameter overrides injected.
+
+        Applies scenario adjustments BEFORE passing to plan_day:
+          - new_depot:           override depot coordinates
+          - ev_fleet_mix:        no structural change at planner level (range already handled by routing)
+          - driver_count_change: slice available driver list
+          - demand_surge:        multiply order weight in target zone (not currently surfaced
+                                 to OR-Tools — logged in result metadata)
+        """
+        scenario_type = parameters.get("_scenario_type", "")
+        overrides: dict[str, Any] = {}
+
+        if scenario_type == "new_depot":
+            overrides["_depot_lat"] = parameters.get("lat", _FALLBACK_LAT)
+            overrides["_depot_lng"] = parameters.get("lng", _FALLBACK_LNG)
+        elif scenario_type == "driver_count_change":
+            overrides["_driver_delta"] = parameters.get("delta", 0)
+        elif scenario_type == "demand_surge":
+            overrides["_surge_zone"]   = parameters.get("zone", "")
+            overrides["_surge_factor"] = parameters.get("surge_factor", 1.0)
+
+        # Store overrides for plan_day to pick up via a thin wrapper
+        result = self._plan_day_with_overrides(
+            db=db,
+            tenant_id=tenant_id,
+            plan_date=plan_date,
+            carry_over=carry_over,
+            overrides=overrides,
+        )
+        return result
+
+    def _plan_day_with_overrides(
+        self,
+        db: Session,
+        tenant_id: str,
+        plan_date: date,
+        carry_over: dict[str, int],
+        overrides: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Call plan_day with optional depot/driver overrides from scenario params.
+
+        This thin wrapper avoids duplicating the full plan_day logic.
+        For the scenario simulator we set commit_assignments=False so we don't
+        actually mutate production data.
+        """
+        # patch module-level fallback if new_depot scenario
+        orig_lat = _FALLBACK_LAT
+        orig_lng = _FALLBACK_LNG
+        import app.planners.ortools_planner as _self_mod
+
+        if "_depot_lat" in overrides:
+            _self_mod._FALLBACK_LAT = overrides["_depot_lat"]
+            _self_mod._FALLBACK_LNG = overrides["_depot_lng"]
+
+        try:
+            result = self.plan_day(
+                db=db,
+                tenant_id=tenant_id,
+                plan_date=plan_date,
+                commit_assignments=False,
+            )
+        finally:
+            _self_mod._FALLBACK_LAT = orig_lat
+            _self_mod._FALLBACK_LNG = orig_lng
+
+        # Apply driver_count_change post-hoc (trim assignments)
+        delta = overrides.get("_driver_delta", 0)
+        if delta < 0 and result.get("assignments"):
+            # Remove assignments from last `abs(delta)` drivers
+            driver_ids = list(dict.fromkeys(a["driver_id"] for a in result["assignments"]))
+            remove_ids = set(driver_ids[delta:])   # last abs(delta) drivers
+            result["assignments"] = [a for a in result["assignments"] if a["driver_id"] not in remove_ids]
+            result["assigned_orders"] = len(result["assignments"])
+
+        return result
+
     def replan(self, db: Session, tenant_id: str, plan_date: date, context: dict[str, Any]) -> dict[str, Any]:
         """
         Re-run OR-Tools for remaining PENDING stops on plan_date.

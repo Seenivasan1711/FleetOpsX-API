@@ -1,11 +1,11 @@
 import logging
-from typing import Optional
+from typing import Generator, Optional
 from uuid import UUID
 from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from jose import JWTError
-from app.core.db import get_db
+from app.core.db import get_db, get_db_for_tenant
 from app.core.security import decode_token
 from app.models.user import User
 from sqlalchemy import select
@@ -68,3 +68,36 @@ def require_driver(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != "driver":
         raise HTTPException(status_code=403, detail="Driver role required")
     return current_user
+
+
+def require_platform_admin(current_user: User = Depends(get_current_user)) -> User:
+    """Only allows superadmin role — platform-level operations (P4-E1+)."""
+    if current_user.role != "superadmin":
+        raise HTTPException(status_code=403, detail="Platform admin role required")
+    return current_user
+
+
+def require_permission(permission: str):
+    """Factory dep: raises 403 if the authenticated user lacks the given permission."""
+    def _check(
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
+    ) -> User:
+        from app.services.rbac_service import check_permission
+        if not check_permission(current_user, permission, db):
+            raise HTTPException(status_code=403, detail=f"Permission required: {permission}")
+        return current_user
+    return _check
+
+
+def get_tenant_db(current_user: User = Depends(get_current_user)) -> Generator[Session, None, None]:
+    """Yields a DB session routed to the authenticated tenant's database (P4-E1).
+
+    Falls back to the shared DB for tenants without a dedicated route.
+    Auth always uses the shared DB via get_current_user → no circular dependency.
+    """
+    db = get_db_for_tenant(str(current_user.tenant_id))
+    try:
+        yield db
+    finally:
+        db.close()

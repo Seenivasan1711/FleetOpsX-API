@@ -15,6 +15,12 @@ from app.models.agent_suggestion import AgentSuggestion
 from app.models.driver_availability import DriverAvailability
 from app.models.vehicle_status import VehicleStatus
 from app.models.chat_message import ChatMessage
+from app.models.tenant_db_route import TenantDbRoute
+from app.models.integration import WebhookRegistration, IntegrationLog
+from app.models.marketplace import CapacityOffer, CapacityRequest, CapacityMatch
+from app.models.audit_log import AuditLogEntry
+from app.models.rbac import RbacRole
+from app.models.scenario import ScenarioRun, ScenarioResult
 
 __all__ = [
     "Base", "TimestampMixin", "TenantMixin",
@@ -31,4 +37,10 @@ __all__ = [
     "DeliveryAnalytics", "DriverPerformanceScore",
     "AgentSuggestion",
     "ChatMessage",
+    "TenantDbRoute",
+    "WebhookRegistration", "IntegrationLog",
+    "CapacityOffer", "CapacityRequest", "CapacityMatch",
+    "AuditLogEntry",
+    "RbacRole",
+    "ScenarioRun", "ScenarioResult",
 ]

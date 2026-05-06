@@ -101,6 +101,8 @@ FleetOpsX-UI/                   ← Frontend repo (sibling directory)
 | ORM & Migrations | SQLAlchemy 2 + Alembic |
 | Caching | Redis 7 |
 | Authentication | JWT (python-jose) + bcrypt |
+| Task Queue | Celery 5 + Redis broker (webhook delivery, marketplace) |
+| Scheduler | APScheduler (ETL, monitor scan, route cache, match engine) |
 | Observability | Sentry, Prometheus, Grafana, Loguru |
 | Planner v1 | Rule-based greedy (Haversine distance) |
 | Planner v2 *(Phase 2)* | LangGraph multi-agent + OR-Tools VRPTW |
@@ -164,9 +166,11 @@ This starts six services:
 | **API** | http://localhost:8000 | FastAPI backend |
 | **API Docs** | http://localhost:8000/docs | Interactive Swagger UI |
 | **Database** | localhost:5600 | PostgreSQL + PostGIS |
-| **Redis** | localhost:6379 | Cache |
+| **Redis** | localhost:6379 | Cache + Celery broker |
 | **Prometheus** | http://localhost:9090 | Metrics scraper |
 | **Grafana** | http://localhost:3000 | Dashboards (admin / admin) |
+
+> **Celery worker** (for webhook delivery + marketplace matching) is not started by `docker compose up` by default. See [Celery Worker](#celery-worker) below.
 
 ### Step 4 — Run database migrations
 
@@ -194,6 +198,71 @@ Go to **http://localhost:5173/login** and sign in with:
 |------|-------|----------|-----------|
 | Dispatcher | dispatcher@demo.com | demo1234 | *(from seed output)* |
 | Driver | driver@demo.com | demo1234 | *(from seed output)* |
+
+---
+
+## Celery Worker
+
+Celery handles **webhook delivery** (partner integrations) and **marketplace matching**. Without a running worker, these features queue tasks silently — they will execute once a worker comes online.
+
+### Local setup
+
+Open a **second terminal** after starting the API:
+
+```bash
+cd FleetOpsX-API
+source venv/bin/activate
+
+# Start Celery worker (processes tasks from Redis queue)
+celery -A app.workers.celery_app worker --loglevel=info
+
+# Optional: Flower monitoring UI → http://localhost:5555
+celery -A app.workers.celery_app flower
+```
+
+The worker uses the same `REDIS_URL` from `.env`. No extra config needed.
+
+### Docker Compose setup
+
+Add a worker service to `docker-compose.yml` (or run alongside the API container):
+
+```bash
+# One-liner: run the worker in the same container as the API
+docker compose exec api celery -A app.workers.celery_app worker --loglevel=info
+```
+
+Or add a dedicated service in `docker-compose.yml`:
+
+```yaml
+celery-worker:
+  build: .
+  command: celery -A app.workers.celery_app worker --loglevel=info
+  env_file: .env
+  depends_on:
+    - db
+    - redis
+  restart: unless-stopped
+```
+
+### Render setup
+
+In your Render dashboard, add a **Background Worker** service pointing to the same Docker image:
+
+1. **Render Dashboard → New → Background Worker**
+2. **Source:** same Git repo as your API service
+3. **Start Command:** `celery -A app.workers.celery_app worker --loglevel=info`
+4. **Environment Variables:** copy all from your API service (same `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET_KEY`, LLM keys)
+5. **Plan:** Starter (the free tier sleeps and won't process tasks reliably)
+
+> **Redis on Render:** Use [Render Redis](https://render.com/docs/redis) or [Upstash](https://upstash.com) (free tier). Set `REDIS_URL` to the external Redis URL in both the API service and the Celery worker service.
+
+**Minimal Render environment for the worker:**
+
+```env
+DATABASE_URL=postgresql://...   # same as API
+REDIS_URL=redis://...           # same Redis instance
+JWT_SECRET_KEY=...              # same secret (for webhook HMAC key derivation)
+```
 
 ---
 
@@ -230,6 +299,15 @@ Migrations are managed with Alembic. The migration history:
 |----------|-------------|
 | `69965e83503f` | P1-E2 — Tenant + TenantConfig tables |
 | `9cfd8384148b` | P1-E3 — All 13 core domain tables |
+| `486e6906d442` | P2-E3 — Agent logs |
+| `3abca364f966` | P2-E4 — Driver location pings |
+| `a1b2c3d4e5f6` | P3-E1 — Analytics tables |
+| `b2c3d4e5f6a7` | P3-E2 — Agent suggestions |
+| `c3d4e5f6a7b8` | PP-E3 — Driver availability + vehicle status |
+| `d4e5f6a7b8c9` | PP-E4 — Chat messages |
+| `e5f6a7b8c9d0` | P4-E1 — Tenant DB routes |
+| `f6a7b8c9d0e1` | P4-E2 — Webhook registrations + integration logs |
+| `0a1b2c3d4e5f` | P4-E3 — Capacity marketplace tables |
 
 ```bash
 # Apply all pending migrations
@@ -305,6 +383,17 @@ python scripts/seed_data.py --start-date $(date +%Y-%m-%d)
 uvicorn app.main:app --reload
 ```
 
+**Optional — Celery worker** (second terminal, for webhooks + marketplace):
+
+```bash
+cd FleetOpsX-API
+source venv/bin/activate
+celery -A app.workers.celery_app worker --loglevel=info
+
+# Flower task monitor → http://localhost:5555
+celery -A app.workers.celery_app flower
+```
+
 ### Frontend
 
 ```bash
@@ -372,9 +461,10 @@ See **[DEMO_GUIDE.md](./DEMO_GUIDE.md)** for the full step-by-step investor demo
 | Phase | Status | Description |
 |-------|--------|-------------|
 | **Phase 1** | ✅ Complete | Rule-based planner, multi-tenant CRUD, dispatcher dashboard, driver mobile view |
-| **Phase 2** | Planned | OR-Tools VRPTW optimisation, LangGraph autonomous dispatch agent, real-time re-planning |
-| **Phase 3** | Planned | Adaptive multi-agent learning, SLA risk prediction, anomaly detection |
-| **Phase 4** | Planned | Enterprise fleet intelligence, multi-depot optimisation, enterprise SSO |
+| **Phase 2** | ✅ Complete | OR-Tools VRPTW optimisation, LangGraph autonomous dispatch agent, real-time GPS + re-planning |
+| **Phase 3** | ✅ Complete | Adaptive multi-agent orchestration, SLA risk alerts, proactive planning, historical analytics |
+| **Phase P** | ✅ Complete | Planning AI enhancements, multi-plan options, driver/vehicle availability, Chat AI, Excel export/import, route map overlay, UI polish |
+| **Phase 4** | 🔵 In Progress | P4-E1 (per-tenant DB routing) ✅ · P4-E2 (webhook integrations) ✅ · P4-E3 (capacity marketplace) ✅ · P4-E4 (governance/audit) · P4-E5 (multi-day planning) |
 
 ---
 

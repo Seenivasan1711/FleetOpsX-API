@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     # Planner (used in P1-E4)
     PLANNER_TYPE: str = "rule_based"
 
+    # Multi-tenant DB routing (P4-E1)
+    TENANT_MODE: str = "multi"              # "multi" | "single" (on-prem/single-tenant)
+    DB_ROUTE_REFRESH_INTERVAL: int = 60     # seconds between route cache refreshes
+
     # LLM — system-wide defaults (tenants can override via TenantConfig KV store)
     LLM_PROVIDER: str = "gemini"          # gemini | openai | anthropic
     GEMINI_API_KEY: Optional[str] = None

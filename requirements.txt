@@ -29,6 +29,10 @@ apscheduler>=3.10
 # Phase P — Excel Export / Import
 openpyxl>=3.1
 
+# Phase 4 — Celery task queue (webhook delivery, marketplace matching)
+celery>=5.3
+flower>=2.0
+
 # Phase 2 — LLM / LangChain
 langchain-core>=0.2
 langchain-google-genai>=1.0

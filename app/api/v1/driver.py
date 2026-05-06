@@ -108,14 +108,33 @@ def update_stop_status(
         raise HTTPException(404, "Stop not found")
 
     stop.status = new_status
+    order = db.get(Order, stop.order_id)
     if new_status == "DELIVERED":
-        order = db.get(Order, stop.order_id)
         if order:
             order.status = "DELIVERED"
     elif new_status == "FAILED":
-        order = db.get(Order, stop.order_id)
         if order:
             order.status = "FAILED"
 
     db.commit()
+
+    # Dispatch webhook event for partner integrations (P4-E2)
+    if new_status in ("DELIVERED", "FAILED") and order:
+        try:
+            from app.integrations.webhook_service import dispatch_event
+            event_type = "order.delivered" if new_status == "DELIVERED" else "order.failed"
+            dispatch_event(
+                event_type=event_type,
+                payload={
+                    "order_id":  str(order.id),
+                    "stop_id":   stop_id,
+                    "status":    new_status,
+                    "address":   order.delivery_address,
+                },
+                db=db,
+                tenant_id=str(current_user.tenant_id),
+            )
+        except Exception:
+            pass  # webhook dispatch failure must never break the driver endpoint
+
     return {"stop_id": stop_id, "status": new_status, "message": "Status updated"}

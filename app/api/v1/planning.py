@@ -10,6 +10,7 @@ from app.api.deps import get_db, require_dispatcher
 from app.services.planning_service import PlanningService
 from app.services import plan_options_service
 from app.schemas.plan_options import PlanOptionsResponse, PlanConfirmRequest
+from app.schemas.scenario import MultiDayPlanRequest, DayPlanSummary
 
 router = APIRouter(prefix="/plan", tags=["Planning"])
 
@@ -120,3 +121,54 @@ def replan(
     result = ORToolsPlanner().plan_day(db=db, tenant_id=str(tid), plan_date=plan_date)
     result["replan"] = True
     return result
+
+
+@router.post("/multi-day")
+def plan_multi_day(
+    body: MultiDayPlanRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_dispatcher),
+):
+    """Run OR-Tools sequentially across a date horizon with carry-over constraints.
+
+    commit_assignments=False — this is a dry-run preview. Use POST /plan/day
+    for each date individually to commit real assignments.
+    """
+    from datetime import timedelta
+    from app.planners.ortools_planner import ORToolsPlanner
+
+    dates = [body.start_date + timedelta(days=i) for i in range(body.horizon_days)]
+    planner = ORToolsPlanner()
+    day_results = planner.plan_horizon(
+        db=db,
+        tenant_id=str(current_user.tenant_id),
+        dates=dates,
+        parameters=body.parameters,
+    )
+
+    days_out = []
+    total_orders = total_assigned = 0
+    on_time_sum = 0.0
+
+    for day_result in day_results:
+        assigned = day_result.get("assigned_orders", 0)
+        total    = day_result.get("total_orders", 0)
+        total_orders += total
+        total_assigned += assigned
+        on_time_sum += (assigned / max(total, 1))
+
+        days_out.append(DayPlanSummary(
+            plan_date=day_result.get("plan_date"),
+            plan_id=day_result.get("plan_id"),
+            assigned_orders=assigned,
+            total_routes=day_result.get("total_routes", 0),
+            total_orders=total,
+        ))
+
+    horizon = len(dates)
+    summary = {
+        "total_orders":     total_orders,
+        "total_assigned":   total_assigned,
+        "avg_on_time_rate": round(on_time_sum / max(horizon, 1), 4),
+    }
+    return {"days": days_out, "summary": summary}

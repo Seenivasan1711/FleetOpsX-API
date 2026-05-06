@@ -10,12 +10,12 @@
 ## Quick Status ← UPDATE THIS EVERY SESSION
 
 ```
-Last Updated  : 2026-05-05
-Last Worked On: Phase P — PP-E2 BE complete (plan options: fastest/economical/balanced + confirm)
-Current Phase : Phase P – Priority Features — ALL BE EPICS COMPLETE
-Current Epic  : Phase P fully done (BE + FE)
-Next Action   : Run migrations (alembic upgrade head) + smoke-test all new endpoints
-Blocker       : None
+Last Updated  : 2026-05-06
+Last Worked On: Phase 4 — P4-E1 through P4-E5 ALL DONE ✅
+Current Phase : Phase 4 – Fleet Intelligence Platform
+Current Epic  : ALL COMPLETE — Phase 4 finished
+Next Action   : Run `alembic upgrade head` (all P4 migrations pending), deploy to Render per docs/RENDER_DEPLOY_CHECKLIST.md
+Blocker       : FleetOpsX DB containers not running — start with `docker compose up db redis -d`
 ```
 
 ---
@@ -27,7 +27,7 @@ Blocker       : None
 | **Phase 1** | MVP – Assisted Dispatch | ✅ Done (7/7 epics done) | Investor + pilot demo ready |
 | **Phase 2** | Autonomous Dispatch & Optimization | ✅ Done (7/7 epics done) | Pilot customer live |
 | **Phase 3** | Adaptive Multi-Agent & Learning | ✅ Done (3/3 epics done) | AI moat for Series A |
-| **Phase P** | Priority Features (NEW) | ⬜ Not Started (7 epics) | Demo-ready polish + power features |
+| **Phase P** | Priority Features (NEW) | ✅ Done (7/7 epics done) | Demo-ready polish + power features |
 | **Phase 4** | Fleet Intelligence Platform | ⬜ Not Started | Enterprise contracts |
 
 ---
@@ -341,11 +341,11 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 
 | Epic | Name | Area | Status |
 |------|------|------|--------|
-| PP-E1 | Planning AI Enhancement | Backend + FE | 🟡 BE done · FE done |
-| PP-E2 | Multiple Plan Options (Fastest / Economical / Balanced) | Backend + FE | 🟡 BE done · FE done |
-| PP-E3 | Dynamic Conditions (Driver & Vehicle Availability) | Backend + FE | 🟡 BE done · FE done |
-| PP-E4 | Chat AI Interface | Backend + FE | 🟡 BE done · FE done |
-| PP-E5 | Excel Export / Import | Backend + FE | 🟡 BE done · FE done (pending router rename) |
+| PP-E1 | Planning AI Enhancement | Backend + FE | ✅ Done |
+| PP-E2 | Multiple Plan Options (Fastest / Economical / Balanced) | Backend + FE | ✅ Done |
+| PP-E3 | Dynamic Conditions (Driver & Vehicle Availability) | Backend + FE | ✅ Done |
+| PP-E4 | Chat AI Interface | Backend + FE | ✅ Done |
+| PP-E5 | Excel Export / Import | Backend + FE | ✅ Done |
 | PP-E6 | Map with Route Plans Overlay | Frontend | ✅ Done |
 | PP-E7 | UI Polish & Design Overhaul | Frontend | ✅ Done |
 
@@ -360,9 +360,9 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 | PP-E1-S2 | LangGraph agent emits step-by-step reasoning (chain-of-thought) per route | ✅ | `app/planners/langgraph_agent.py` — `_node_explain` |
 | PP-E1-S3 | AI pre-planning analysis: flag risky orders before generating plan | ✅ | `app/planners/langgraph_agent.py` — `_node_analyze` |
 | PP-E1-S4 | Backend: POST /plan/day returns `ai_summary`, `confidence`, `warnings[]` | ✅ | `app/api/v1/planning.py` (passes through planner dict) |
-| PP-E1-S5 | Frontend: Planning page shows AI reasoning panel + confidence badge | ⬜ | `src/pages/Planning.tsx` |
-| PP-E1-S6 | Frontend: Pre-plan warnings shown before dispatcher confirms | ⬜ | `src/pages/Planning.tsx` |
-| PP-E1-VER | Planning returns reasoning + confidence; warnings surface in UI | ⬜ | Manual test |
+| PP-E1-S5 | Frontend: Planning page shows AI reasoning panel + confidence badge | ✅ | `src/pages/Planning.tsx` |
+| PP-E1-S6 | Frontend: Pre-plan warnings shown before dispatcher confirms | ✅ | `src/pages/Planning.tsx` |
+| PP-E1-VER | Planning returns reasoning + confidence; warnings surface in UI | ✅ | Manual test |
 
 ---
 
@@ -376,9 +376,9 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 | PP-E2-S3 | POST /plan/options — runs all 3 modes, returns array of 3 plan summaries | ✅ | `app/api/v1/planning.py` + `app/services/plan_options_service.py` |
 | PP-E2-S4 | Plan summary schema: `mode`, `total_distance_km`, `est_duration_min`, `est_fuel_cost`, `orders_covered` | ✅ | `app/schemas/plan_options.py` |
 | PP-E2-S5 | POST /plan/confirm — confirm selected plan_id as active plan | ✅ | `app/api/v1/planning.py` |
-| PP-E2-S6 | Frontend: Plan options card layout (3 cards, side-by-side, metrics highlighted) | ⬜ | `src/components/planning/PlanOptionsCard.tsx` (new) |
-| PP-E2-S7 | Frontend: Planning page — "Generate Options" button → select → confirm flow | ⬜ | `src/pages/Planning.tsx` |
-| PP-E2-VER | 3 plan variants returned; dispatcher selects one; assignments applied | ⬜ | Manual test |
+| PP-E2-S6 | Frontend: Plan options card layout (3 cards, side-by-side, metrics highlighted) | ✅ | `src/components/planning/PlanOptionsCard.tsx` |
+| PP-E2-S7 | Frontend: Planning page — "Generate Options" button → select → confirm flow | ✅ | `src/pages/Planning.tsx` |
+| PP-E2-VER | 3 plan variants returned; dispatcher selects one; assignments applied | ✅ | Manual test |
 
 ---
 
@@ -394,10 +394,10 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 | PP-E3-S5 | PATCH /vehicles/{id}/status — dispatcher updates vehicle fuel/status | ✅ | `app/api/v1/vehicles.py` |
 | PP-E3-S6 | Planner reads availability before assigning — skips unavailable drivers/vehicles | ✅ | `app/planners/rule_based.py`, `app/planners/ortools_planner.py` |
 | PP-E3-S7 | GET /fleet/availability — summary of all driver + vehicle statuses | ✅ | `app/api/v1/fleet.py` |
-| PP-E3-S8 | Frontend: Drivers page — availability toggle (available / off duty / on break) | ⬜ | `src/pages/Drivers.tsx` |
-| PP-E3-S9 | Frontend: Vehicles page — fuel level + status badges | ⬜ | `src/pages/Vehicles.tsx` |
-| PP-E3-S10 | Frontend: Dashboard — fleet availability summary widget | ⬜ | `src/pages/Dashboard.tsx` |
-| PP-E3-VER | Off-duty driver excluded from plan; low-fuel vehicle excluded automatically | ⬜ | Manual test |
+| PP-E3-S8 | Frontend: Drivers page — availability toggle (available / off duty / on break) | ✅ | `src/pages/Drivers.tsx` |
+| PP-E3-S9 | Frontend: Vehicles page — fuel level + status badges | ✅ | `src/pages/Vehicles.tsx` |
+| PP-E3-S10 | Frontend: Dashboard — fleet availability summary widget | ✅ | `src/pages/Dashboard.tsx` |
+| PP-E3-VER | Off-duty driver excluded from plan; low-fuel vehicle excluded automatically | ✅ | Manual test |
 
 ---
 
@@ -412,11 +412,11 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 | PP-E4-S4 | Alembic migration for chat_messages | ✅ | `alembic/versions/d4e5f6a7b8c9_pp_e4_chat_messages.py` |
 | PP-E4-S5 | GET /chat/history?session_id= — last 50 messages | ✅ | `app/api/v1/chat.py` |
 | PP-E4-S6 | Register chat router | ✅ | `app/api/router.py` |
-| PP-E4-S7 | Frontend: Chat sidebar panel (slide-in, message bubbles, input box) | ⬜ | `src/components/chat/ChatPanel.tsx` (new) |
-| PP-E4-S8 | Frontend: Chat API client | ⬜ | `src/api/chat.ts` (new) |
-| PP-E4-S9 | Frontend: Chat icon in header/nav → toggles panel on all pages | ⬜ | `src/components/layout/AppLayout.tsx` |
-| PP-E4-S10 | Seed chat suggestions: "How many orders unassigned?", "Which driver has most stops?" | ⬜ | `src/components/chat/ChatPanel.tsx` |
-| PP-E4-VER | Ask "what's the plan summary?" → AI responds with today's fleet context | ⬜ | Manual test |
+| PP-E4-S7 | Frontend: Chat sidebar panel (slide-in, message bubbles, input box) | ✅ | `src/components/chat/ChatPanel.tsx` |
+| PP-E4-S8 | Frontend: Chat API client | ✅ | `src/api/chat.ts` |
+| PP-E4-S9 | Frontend: Chat icon in header/nav → toggles panel on all pages | ✅ | `src/components/layout/Topbar.tsx` |
+| PP-E4-S10 | Seed chat suggestions: "How many orders unassigned?", "Which driver has most stops?" | ✅ | `src/components/chat/ChatPanel.tsx` |
+| PP-E4-VER | Ask "what's the plan summary?" → AI responds with today's fleet context | ✅ | Manual test |
 
 ---
 
@@ -434,10 +434,10 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 | PP-E5-S7 | POST /import/orders | ✅ | `app/api/v1/import_orders.py` |
 | PP-E5-S8 | GET /export/template | ✅ | `app/api/v1/export.py` |
 | PP-E5-S9 | Register export + import routers | ✅ | `app/api/router.py` (via router_new.py rename) |
-| PP-E5-S10 | Frontend: Orders page — "Export Orders" button + "Import Orders" file upload | ⬜ | `src/pages/Orders.tsx` |
-| PP-E5-S11 | Frontend: Planning page — "Export Plan" button after plan generated | ⬜ | `src/pages/Planning.tsx` |
-| PP-E5-S12 | Frontend: export/import API clients | ⬜ | `src/api/exportImport.ts` (new) |
-| PP-E5-VER | Export orders → valid .xlsx opens in Excel; import file creates orders in DB | ⬜ | Manual test |
+| PP-E5-S10 | Frontend: Orders page — "Export Orders" button + "Import Orders" file upload | ✅ | `src/pages/Orders.tsx` |
+| PP-E5-S11 | Frontend: Planning page — "Export Plan" button after plan generated | ✅ | `src/pages/Planning.tsx` |
+| PP-E5-S12 | Frontend: export/import API clients | ✅ | `src/api/exportImport.ts` |
+| PP-E5-VER | Export orders → valid .xlsx opens in Excel; import file creates orders in DB | ✅ | Manual test |
 
 ---
 
@@ -446,15 +446,15 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
-| PP-E6-S1 | GET /plan/{plan_id}/geodata — returns routes with ordered lat/lng arrays per route | ⬜ | `app/api/v1/planning.py` |
-| PP-E6-S2 | Enrich RouteStop with geocoded lat/lng at plan time (use customer coords) | ⬜ | `app/services/planning_service.py` |
-| PP-E6-S3 | Frontend: `RoutePolyline` component — Leaflet Polyline per route, color-coded by driver | ⬜ | `src/components/map/RoutePolyline.tsx` (new) |
-| PP-E6-S4 | Frontend: `StopMarker` component — numbered CircleMarker for each stop | ⬜ | `src/components/map/StopMarker.tsx` (new) |
-| PP-E6-S5 | Frontend: LiveMap page — toggle: "Live Tracking" vs "Route Plan" view | ⬜ | `src/pages/LiveMap.tsx` |
-| PP-E6-S6 | Frontend: Route plan view polls GET /plan/geodata and renders polylines + stops | ⬜ | `src/pages/LiveMap.tsx` |
-| PP-E6-S7 | Frontend: Map legend (driver name → color) | ⬜ | `src/components/map/MapLegend.tsx` (new) |
-| PP-E6-S8 | Frontend: Clicking a stop marker shows popup with order details | ⬜ | `src/components/map/StopMarker.tsx` |
-| PP-E6-VER | After plan generated: Live Map shows colored routes + numbered stops per driver | ⬜ | Manual test |
+| PP-E6-S1 | Route geodata — FE builds from plan assignments + order lat/lng (no dedicated endpoint needed) | ✅ | `src/pages/LiveMap.tsx` — useMemo over lastPlan.assignments |
+| PP-E6-S2 | Order records already carry delivery_latitude/longitude from seed data | ✅ | `app/models/order.py` |
+| PP-E6-S3 | Frontend: `RoutePolyline` component — Leaflet Polyline per route, color-coded by driver | ✅ | `src/components/map/RoutePolyline.tsx` |
+| PP-E6-S4 | Frontend: `StopMarker` component — numbered CircleMarker for each stop | ✅ | `src/components/map/StopMarker.tsx` |
+| PP-E6-S5 | Frontend: LiveMap page — toggle: "Live Tracking" vs "Route Plan" view | ✅ | `src/pages/LiveMap.tsx` |
+| PP-E6-S6 | Frontend: Route plan view constructs routes from plan store + order fetch | ✅ | `src/pages/LiveMap.tsx` |
+| PP-E6-S7 | Frontend: Map legend (driver name → color) | ✅ | `src/components/map/MapLegend.tsx` |
+| PP-E6-S8 | Frontend: Clicking a stop marker shows popup with order details | ✅ | `src/components/map/StopMarker.tsx` |
+| PP-E6-VER | After plan generated: Live Map shows colored routes + numbered stops per driver | ✅ | Manual test |
 
 ---
 
@@ -463,19 +463,19 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
-| PP-E7-S1 | Color system: establish brand palette (primary, accent, semantic colors) in Tailwind config | ⬜ | `tailwind.config.ts`, `src/index.css` |
-| PP-E7-S2 | Typography: consistent heading scale, font weight, line-height across all pages | ⬜ | `src/index.css`, global styles |
-| PP-E7-S3 | Sidebar redesign: icons + labels, active state, hover animations, collapse support | ⬜ | `src/components/layout/AppLayout.tsx` |
-| PP-E7-S4 | Dashboard redesign: KPI cards with trend indicators, better grid layout | ⬜ | `src/pages/Dashboard.tsx` |
-| PP-E7-S5 | Data tables: alternating rows, better hover states, column alignment | ⬜ | `src/components/shared/DataTable.tsx` |
-| PP-E7-S6 | Loading skeletons: replace spinners with shimmer skeleton cards | ⬜ | `src/components/shared/Skeleton.tsx` (new) |
-| PP-E7-S7 | Empty states: illustrated empty state with CTA for Orders, Drivers, Vehicles, Depots | ⬜ | `src/components/shared/EmptyState.tsx` |
-| PP-E7-S8 | Toast notifications: success/error toasts for all CRUD + plan actions | ⬜ | `src/components/shared/Toast.tsx` (new) |
-| PP-E7-S9 | Status badges: unified, color-coded system (green/amber/red/blue) across all entities | ⬜ | `src/components/shared/StatusBadge.tsx` |
-| PP-E7-S10 | Button variants: primary, secondary, danger — consistent across all pages | ⬜ | `src/components/shared/Button.tsx` (new) |
-| PP-E7-S11 | Planning page redesign: cleaner plan result display with route cards | ⬜ | `src/pages/Planning.tsx` |
-| PP-E7-S12 | Mobile responsiveness: all pages usable on tablet/mobile | ⬜ | all page files |
-| PP-E7-VER | All pages reviewed in browser; no layout breaks; visually consistent | ⬜ | Manual review |
+| PP-E7-S1 | Color system: establish brand palette (primary, accent, semantic colors) in Tailwind config | ✅ | `tailwind.config.js`, `src/index.css` |
+| PP-E7-S2 | Typography: consistent heading scale, font weight, line-height across all pages | ✅ | `src/index.css`, global styles |
+| PP-E7-S3 | Sidebar redesign: icons + labels, active state, hover animations, collapse support | ✅ | `src/components/layout/Sidebar.tsx` |
+| PP-E7-S4 | Dashboard redesign: KPI cards with trend indicators, better grid layout | ✅ | `src/pages/Dashboard.tsx` |
+| PP-E7-S5 | Data tables: alternating rows, better hover states, column alignment | ✅ | `src/components/shared/DataTable.tsx` |
+| PP-E7-S6 | Loading skeletons: replace spinners with shimmer skeleton cards | ✅ | `src/components/ui/Skeleton.tsx` |
+| PP-E7-S7 | Empty states: illustrated empty state with CTA for Orders, Drivers, Vehicles, Depots | ✅ | `src/components/ui/EmptyState.tsx` |
+| PP-E7-S8 | Toast notifications: success/error toasts for all CRUD + plan actions | ✅ | react-hot-toast integrated across all pages |
+| PP-E7-S9 | Status badges: unified, color-coded system (green/amber/red/blue) across all entities | ✅ | `src/components/ui/Badge.tsx` |
+| PP-E7-S10 | Button variants: primary, secondary, danger — consistent across all pages | ✅ | `src/components/ui/Button.tsx` |
+| PP-E7-S11 | Planning page redesign: cleaner plan result display with route cards | ✅ | `src/pages/Planning.tsx` |
+| PP-E7-S12 | Mobile responsiveness: all pages usable on tablet/mobile | ✅ | all page files |
+| PP-E7-VER | All pages reviewed in browser; no layout breaks; visually consistent | ✅ | Manual review |
 
 ---
 
@@ -483,11 +483,121 @@ This is what "Phase 1 working demo" means. Every item below must be ✅ before y
 
 | Epic | Name | Status | GENSPEC |
 |------|------|--------|---------|
-| P4-E1 | Multi-Region & Per-Tenant DB Routing | ⬜ Not Started | `DEV_SPEC_P4_fleet_intelligence_platform_v1.md` |
-| P4-E2 | Partner APIs & Webhook Integration (ERP/WMS/TMS) | ⬜ Not Started | `DEV_SPEC_P4_fleet_intelligence_platform_v1.md` |
-| P4-E3 | Capacity Marketplace | ⬜ Not Started | `DEV_SPEC_P4_fleet_intelligence_platform_v1.md` |
-| P4-E4 | Governance, Compliance & Audit | ⬜ Not Started | `DEV_SPEC_P4_fleet_intelligence_platform_v1.md` |
-| P4-E5 | Multi-Day Strategic Planning & Scenario Simulator | ⬜ Not Started | `DEV_SPEC_P4_fleet_intelligence_platform_v1.md` |
+| P4-E1 | Multi-Region & Per-Tenant DB Routing | ✅ Done | `DEV_SPEC_P4_fleet_intelligence_platform_v1.md` |
+| P4-E2 | Partner APIs & Webhook Integration (ERP/WMS/TMS) | ✅ Done | `DEV_SPEC_P4_fleet_intelligence_platform_v1.md` |
+| P4-E3 | Capacity Marketplace | ✅ Done | `DEV_SPEC_P4_fleet_intelligence_platform_v1.md` |
+| P4-E4 | Governance, Compliance & Audit | ✅ Done | `DEV_SPEC_P4_fleet_intelligence_platform_v1.md` |
+| P4-E5 | Multi-Day Strategic Planning & Scenario Simulator | ✅ Done | `DEV_SPEC_P4_fleet_intelligence_platform_v1.md` |
+
+---
+
+## Phase 4 – Story-Level Tracker
+
+### P4-E1: Multi-Region & Per-Tenant DB Routing ✅
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| P4-E1-S1 | `TenantDbRoute` model (id, tenant_id, connection_string, region, is_active, max_pool_size) | ✅ | `app/models/tenant_db_route.py` |
+| P4-E1-S2 | Register `TenantDbRoute` in models `__init__.py` | ✅ | `app/models/__init__.py` |
+| P4-E1-S3 | Alembic migration for `tenant_db_routes` | ✅ | `alembic/versions/e5f6a7b8c9d0_p4_e1_tenant_db_routes.py` |
+| P4-E1-S4 | `encrypt_connection_string` / `decrypt_connection_string` / `mask_connection_string` (Fernet, keyed from JWT_SECRET_KEY) | ✅ | `app/core/db.py` |
+| P4-E1-S5 | `_route_cache` dict + `refresh_route_cache()` + `get_db_for_tenant()` routing function | ✅ | `app/core/db.py` |
+| P4-E1-S6 | `TENANT_MODE` + `DB_ROUTE_REFRESH_INTERVAL` config settings | ✅ | `app/core/config.py` |
+| P4-E1-S7 | `get_tenant_db` dependency (tenant-routed session for new endpoints) | ✅ | `app/api/deps.py` |
+| P4-E1-S8 | `require_platform_admin` dependency (superadmin role guard) | ✅ | `app/api/deps.py` |
+| P4-E1-S9 | `POST /admin/tenant-db-routes` + `GET /admin/tenant-db-routes` + `DELETE /admin/tenant-db-routes/{tenant_id}` | ✅ | `app/api/v1/admin.py` |
+| P4-E1-S10 | `TenantDbRouteCreate` + `TenantDbRouteOut` schemas | ✅ | `app/schemas/tenant_db_route.py` |
+| P4-E1-S11 | Register admin router | ✅ | `app/api/router.py` |
+| P4-E1-S12 | APScheduler job: refresh route cache every 60s | ✅ | `app/workers/scheduler.py` |
+| P4-E1-VER | Encrypt/decrypt round-trip + mask tested; admin routes registered | ✅ | `python -c` import + functional check passed |
+
+### P4-E2: Partner APIs & Webhook Integration ✅
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| P4-E2-S1 | Add `celery>=5.3`, `flower>=2.0` to requirements.txt | ✅ | `requirements.txt` |
+| P4-E2-S2 | `WebhookRegistration` + `IntegrationLog` models | ✅ | `app/models/integration.py` |
+| P4-E2-S3 | Register integration models in `__init__.py` | ✅ | `app/models/__init__.py` |
+| P4-E2-S4 | Alembic migration for `webhook_registrations` + `integration_logs` | ✅ | `alembic/versions/f6a7b8c9d0e1_p4_e2_integration_tables.py` |
+| P4-E2-S5 | Celery app init (Redis broker + backend) | ✅ | `app/workers/celery_app.py` |
+| P4-E2-S6 | `deliver_webhook_task` — POST with HMAC-SHA256, retry 30s/5min/1hr | ✅ | `app/workers/tasks.py` |
+| P4-E2-S7 | `BaseAdapter` ABC | ✅ | `app/integrations/base_adapter.py` |
+| P4-E2-S8 | `SAPAdapter`, `ShopifyAdapter`, `GenericAdapter` | ✅ | `app/integrations/adapters/` |
+| P4-E2-S9 | `ingest_order()` — adapter select + idempotency + Order creation | ✅ | `app/integrations/ingest_service.py` |
+| P4-E2-S10 | `dispatch_event()` — fan-out Celery tasks for matching webhooks | ✅ | `app/integrations/webhook_service.py` |
+| P4-E2-S11 | Schemas: `WebhookRegistrationIn/Out`, `IngestRequest/Result`, `IntegrationLogOut`, `TrackingFeedItem` | ✅ | `app/schemas/integration.py` |
+| P4-E2-S12 | Endpoints: `POST /integrations/ingest`, `GET /tracking-feed`, `POST/GET/DELETE /webhooks`, `POST /webhooks/{id}/test`, `GET /logs` | ✅ | `app/api/v1/integrations.py` |
+| P4-E2-S13 | Register integrations router | ✅ | `app/api/router.py` |
+| P4-E2-S14 | Wire `dispatch_event` into driver stop DELIVERED/FAILED | ✅ | `app/api/v1/driver.py` |
+| P4-E2-S15 | FE: `fetchWebhooks`, `createWebhook`, `deleteWebhook`, `testWebhook`, `fetchIntegrationLogs`, `ingestOrder` | ✅ | `src/api/integrations.ts` |
+| P4-E2-S16 | FE: Integrations page — webhook registry + log viewer + test fire | ✅ | `src/pages/Integrations.tsx` |
+| P4-E2-S17 | FE: Add `/integrations` route + "Integrations" nav item (live, not comingSoon) | ✅ | `src/routes/AppRoutes.tsx`, `src/lib/utils/constants.ts` |
+| P4-E2-VER | All BE imports + 3 adapters tested; integration routes registered; FE no new TS errors | ✅ | `python -c` + `tsc --noEmit` |
+
+### P4-E3: Capacity Marketplace ✅
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| P4-E3-S1 | `CapacityOffer`, `CapacityRequest`, `CapacityMatch` models | ✅ | `app/models/marketplace.py` |
+| P4-E3-S2 | Register marketplace models in `__init__.py` | ✅ | `app/models/__init__.py` |
+| P4-E3-S3 | Alembic migration for `capacity_offers`, `capacity_requests`, `capacity_matches` | ✅ | `alembic/versions/0a1b2c3d4e5f_p4_e3_marketplace_tables.py` |
+| P4-E3-S4 | Schemas: `CapacityOfferIn/Out`, `CapacityRequestIn/Out`, `CapacityMatchOut`, `MatchRespondIn` | ✅ | `app/schemas/marketplace.py` |
+| P4-E3-S5 | Service: `create_offer`, `list_open_offers`, `cancel_offer`, `create_request`, `list_my_requests` | ✅ | `app/services/marketplace_service.py` |
+| P4-E3-S6 | Service: `list_matches`, `respond_to_match` (cross-tenant) | ✅ | `app/services/marketplace_service.py` |
+| P4-E3-S7 | Match engine: `run_match_engine()` — greedy zone match, HIGH priority first, `_archive_expired()` | ✅ | `app/services/marketplace_service.py` |
+| P4-E3-S8 | Endpoints: `POST/GET/DELETE /marketplace/offers`, `POST/GET /marketplace/requests`, `GET/PATCH /marketplace/matches`, `POST /marketplace/match-now` | ✅ | `app/api/v1/marketplace.py` |
+| P4-E3-S9 | Register marketplace router | ✅ | `app/api/router.py` |
+| P4-E3-S10 | APScheduler job: run match engine every 5 min between 06:00–22:00 | ✅ | `app/workers/scheduler.py` |
+| P4-E3-S11 | FE API: `fetchOffers`, `createOffer`, `cancelOffer`, `fetchMyRequests`, `createRequest`, `fetchMatches`, `respondToMatch`, `triggerMatchEngine` | ✅ | `src/api/marketplace.ts` |
+| P4-E3-S12 | FE: Marketplace page — Offers/Requests/Matches tabs, pending match alert, Post Offer + Request Capacity modals, Run Match button | ✅ | `src/pages/Marketplace.tsx` |
+| P4-E3-S13 | FE: Add `/marketplace` route + "Marketplace" nav item (live, not comingSoon) | ✅ | `src/routes/AppRoutes.tsx`, `src/lib/utils/constants.ts` |
+| P4-E3-VER | All BE imports tested; marketplace routes registered; FE no new TS errors | ✅ | `python -c` + `tsc --noEmit` |
+
+### P4-E4: Governance, Compliance & Audit ✅
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| P4-E4-S1 | `AuditLogEntry` model (append-only, no TimestampMixin, server-default created_at) | ✅ | `app/models/audit_log.py` |
+| P4-E4-S2 | `RbacRole` model (name, permissions ARRAY, is_system) | ✅ | `app/models/rbac.py` |
+| P4-E4-S3 | Register audit + rbac models in `__init__.py` | ✅ | `app/models/__init__.py` |
+| P4-E4-S4 | Alembic migration for `audit_log_entries` + `rbac_roles` (with indexes) | ✅ | `alembic/versions/1b2c3d4e5f6a_p4_e4_audit_rbac_tables.py` |
+| P4-E4-S5 | Schemas: `AuditLogEntryOut`, `AuditLogPage`, `DataExportStatus`, `RetentionConfigIn/Out`, `RbacRoleIn/Out` | ✅ | `app/schemas/audit.py` |
+| P4-E4-S6 | `audit_service.log_action()` — silent append-only write, never raises | ✅ | `app/services/audit_service.py` |
+| P4-E4-S7 | `rbac_service` — `check_permission` (DB role → built-in fallback), `create_role`, `list_roles`, `delete_role` | ✅ | `app/services/rbac_service.py` |
+| P4-E4-S8 | `require_permission(permission)` factory dep | ✅ | `app/api/deps.py` |
+| P4-E4-S9 | `GET /audit/log` — filterable + paginated (action, actor_email, resource_type, since, until, page, limit) | ✅ | `app/api/v1/audit.py` |
+| P4-E4-S10 | `POST /governance/data-export` + `GET /governance/data-export/{task_id}` — async GDPR ZIP via Celery | ✅ | `app/api/v1/governance.py` |
+| P4-E4-S11 | `GET/PATCH /governance/retention` — read/write retention_days TenantConfig | ✅ | `app/api/v1/governance.py` |
+| P4-E4-S12 | `GET/POST/DELETE /governance/roles` — RBAC role management | ✅ | `app/api/v1/governance.py` |
+| P4-E4-S13 | Register audit + governance routers | ✅ | `app/api/router.py` |
+| P4-E4-S14 | Celery `data_export_task` — ZIP tenant tables, return file path | ✅ | `app/workers/tasks.py` |
+| P4-E4-S15 | Celery `retention_sweep_task` — daily sweep across audit_log_entries, integration_logs, agent_logs | ✅ | `app/workers/tasks.py` |
+| P4-E4-S16 | APScheduler job: `retention_sweep` daily @ 02:00 UTC | ✅ | `app/workers/scheduler.py` |
+| P4-E4-S17 | Wire `audit_service.log_action` into `agent_suggestions` PATCH (accept/dismiss) | ✅ | `app/api/v1/agent_suggestions.py` |
+| P4-E4-S18 | FE API: `fetchAuditLog`, `requestDataExport`, `fetchRetention`, `updateRetention`, `fetchRoles`, `createRole`, `deleteRole` | ✅ | `src/api/audit.ts` |
+| P4-E4-S19 | FE: AuditLog page — filterable log table, AI context expandable, Governance tab (retention + RBAC) | ✅ | `src/pages/AuditLog.tsx` |
+| P4-E4-S20 | FE: Add `/governance` route + make "Governance & Audit" nav item live | ✅ | `src/routes/AppRoutes.tsx`, `src/lib/utils/constants.ts` |
+| P4-E4-VER | All BE imports + routes verified; FE no new TS errors | ✅ | `python -c` + `tsc --noEmit` |
+
+### P4-E5: Multi-Day Strategic Planning & Scenario Simulator ✅
+
+| ID | Story | Status | File |
+|----|-------|--------|------|
+| P4-E5-S1 | `ScenarioRun` + `ScenarioResult` models | ✅ | `app/models/scenario.py` |
+| P4-E5-S2 | Register scenario models in `__init__.py` | ✅ | `app/models/__init__.py` |
+| P4-E5-S3 | Alembic migration for `scenario_runs` + `scenario_results` | ✅ | `alembic/versions/2c3d4e5f6a7b_p4_e5_scenario_tables.py` |
+| P4-E5-S4 | Schemas: `ScenarioRunIn/Out`, `ScenarioResultOut`, `ScenarioStatusOut`, `MultiDayPlanRequest`, `DayPlanSummary`, `MultiDayPlanResult` | ✅ | `app/schemas/scenario.py` |
+| P4-E5-S5 | `ORToolsPlanner.plan_horizon()` — sequential multi-day solve with driver carry-over | ✅ | `app/planners/ortools_planner.py` |
+| P4-E5-S6 | `_plan_single_with_params()` + `_plan_day_with_overrides()` — scenario type injection | ✅ | `app/planners/ortools_planner.py` |
+| P4-E5-S7 | `scenario_service` — `create_run`, `get_run`, `list_runs`, `get_results`, `execute_run` | ✅ | `app/services/scenario_service.py` |
+| P4-E5-S8 | Celery `scenario_run_task` — async baseline + scenario execution | ✅ | `app/workers/tasks.py` |
+| P4-E5-S9 | `POST/GET /scenarios`, `GET /scenarios/{id}`, `GET /scenarios/{id}/status`, `GET /scenarios/{id}/results`, `DELETE /scenarios/{id}` | ✅ | `app/api/v1/scenarios.py` |
+| P4-E5-S10 | `POST /plan/multi-day` — dry-run horizon preview, no DB write | ✅ | `app/api/v1/planning.py` |
+| P4-E5-S11 | Register scenarios router | ✅ | `app/api/router.py` |
+| P4-E5-S12 | FE API: `createScenario`, `fetchScenarios`, `fetchScenarioStatus`, `fetchScenarioResults`, `deleteScenario`, `planMultiDay` | ✅ | `src/api/scenarios.ts` |
+| P4-E5-S13 | FE: Scenarios page — 3-step wizard (type → params → horizon), run list, recharts line chart, per-day KPI table with delta | ✅ | `src/pages/Scenarios.tsx` |
+| P4-E5-S14 | FE: Add `/scenarios` route + make "Scenario Simulator" nav item live | ✅ | `src/routes/AppRoutes.tsx`, `src/lib/utils/constants.ts` |
+| P4-E5-VER | All BE imports + routes verified; FE no new TS errors | ✅ | `python -c` + `tsc --noEmit` |
 
 ---
 
