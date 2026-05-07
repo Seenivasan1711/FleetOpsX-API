@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fleetpass}
       POSTGRES_DB: ${POSTGRES_DB:-fleetopsx}
     ports:
-      - "5432:5432"
+      - "5600:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -38,6 +38,14 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-fleetuser}:${POSTGRES_PASSWORD:-fleetpass}@db:5432/${POSTGRES_DB:-fleetopsx}
       REDIS_URL: redis://redis:6379/0
+      # Force watchfiles to use polling so uvicorn --reload works
+      # when source files are on a macOS host mounted into a Linux container
+      WATCHFILES_FORCE_POLLING: "true"
+      # LLM keys — set in .env or override here
+      LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     ports:
       - "8000:8000"
     volumes:
@@ -47,6 +55,7 @@ services:
     build:
       context: ../FleetOpsX-UI
       dockerfile: Dockerfile
+      target: dev
     container_name: fleetopsx-ui
     ports:
       - "5173:5173"
