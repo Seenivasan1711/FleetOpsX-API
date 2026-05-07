@@ -50,9 +50,8 @@ def login_user(db: Session, data: LoginRequest) -> Optional[dict]:
     user = db.execute(
         select(User).where(
             User.email == data.email,
-            User.tenant_id == data.tenant_id,
             User.is_active == True,
-        )
+        ).limit(1)
     ).scalar_one_or_none()
 
     if not user or not verify_password(data.password, user.hashed_password):

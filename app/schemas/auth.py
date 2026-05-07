@@ -13,7 +13,6 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     password: str
-    tenant_id: UUID           # required — one email can exist in multiple tenants
 
 
 class TokenResponse(BaseModel):

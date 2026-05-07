@@ -83,12 +83,14 @@ Open these tabs before the demo starts:
 Enter:
 - **Email:** `dispatcher@demo.com`
 - **Password:** `demo1234`
-- **Tenant ID:** *(the UUID from the seed script)*
 
 Click **Sign In**.
 
+> **Admin account:** `admin@demo.com` / `demo1234`
+> **Driver account:** `driver@demo.com` / `demo1234`
+
 **Talking point:**
-> *"The platform is fully multi-tenant. Each fleet company — we call them tenants — has complete data isolation. One login, one tenant. Enterprise clients can have multiple depots, hundreds of drivers, thousands of orders, all under the same account."*
+> *"The platform is fully multi-tenant. Each fleet company — we call them tenants — has complete data isolation. Enterprise clients can have multiple depots, hundreds of drivers, thousands of orders, all under the same account."*
 
 ---
 
