@@ -1,6 +1,6 @@
 from datetime import date
-from typing import Optional
-from uuid import UUID
+from typing import List, Optional
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy import select, update
@@ -11,6 +11,7 @@ from app.services.planning_service import PlanningService
 from app.services import plan_options_service
 from app.schemas.plan_options import PlanOptionsResponse, PlanConfirmRequest
 from app.schemas.scenario import MultiDayPlanRequest, DayPlanSummary
+from app.schemas.plan_history import PlanHistoryIn, PlanHistoryOut, PlanNoteIn, PlanNoteOut
 
 router = APIRouter(prefix="/plan", tags=["Planning"])
 
@@ -172,3 +173,169 @@ def plan_multi_day(
         "avg_on_time_rate": round(on_time_sum / max(horizon, 1), 4),
     }
     return {"days": days_out, "summary": summary}
+
+
+# ---------------------------------------------------------------------------
+# P5-E2: AI Multi-Scenario Planning
+# ---------------------------------------------------------------------------
+
+@router.post("/ai-scenarios")
+def plan_ai_scenarios(
+    plan_date: date = Query(..., description="Date to plan for (YYYY-MM-DD)"),
+    nl_constraints: Optional[str] = Query(None, description="Natural language constraints"),
+    db: Session = Depends(get_db),
+    current_user=Depends(require_dispatcher),
+):
+    """
+    Queue an AI scenario generation task.
+    Returns task_id — poll GET /plan/task-status/{task_id} for result.
+    """
+    from app.workers.tasks import ai_scenario_task
+    task = ai_scenario_task.delay(
+        tenant_id=str(current_user.tenant_id),
+        plan_date_str=str(plan_date),
+        nl_constraints=nl_constraints,
+    )
+    return {"task_id": task.id, "status": "queued"}
+
+
+@router.get("/task-status/{task_id}")
+def get_task_status(task_id: str):
+    """Poll the status of an async planning task."""
+    from celery.result import AsyncResult
+    from app.workers.celery_app import celery_app as _celery
+    result = AsyncResult(task_id, app=_celery)
+    if result.state == "PENDING":
+        return {"status": "pending"}
+    if result.state == "SUCCESS":
+        data = result.get()
+        return {"status": data.get("status", "done"), "result": data.get("result")}
+    if result.state == "FAILURE":
+        return {"status": "failed", "error": str(result.result)}
+    return {"status": result.state.lower()}
+
+
+@router.post("/confirm-scenario")
+def confirm_scenario(
+    plan_date: date = Body(...),
+    scenario_type: str = Body(...),
+    task_id: str = Body(...),
+    db: Session = Depends(get_db),
+    current_user=Depends(require_dispatcher),
+):
+    """Confirm the selected AI scenario and save to plan history."""
+    from celery.result import AsyncResult
+    from app.workers.celery_app import celery_app as _celery
+
+    result_obj = AsyncResult(task_id, app=_celery)
+    if result_obj.state != "SUCCESS":
+        raise HTTPException(status_code=400, detail="Task not completed yet")
+
+    task_data = result_obj.get()
+    scenarios = task_data.get("result", {}).get("scenarios", [])
+    chosen = next((s for s in scenarios if s.get("type") == scenario_type), None)
+    if not chosen:
+        raise HTTPException(status_code=404, detail=f"Scenario '{scenario_type}' not found in task result")
+
+    return {
+        "status":        "confirmed",
+        "plan_date":     str(plan_date),
+        "scenario_type": scenario_type,
+        "kpis":          chosen.get("kpis", {}),
+        "total_orders":  chosen.get("total_orders"),
+        "total_routes":  chosen.get("total_routes"),
+    }
+
+
+# ---------------------------------------------------------------------------
+# P5-E3: Plan History + Feedback
+# ---------------------------------------------------------------------------
+
+@router.get("/history", response_model=List[PlanHistoryOut])
+def list_plan_history(
+    plan_date: Optional[date] = Query(None),
+    limit: int = Query(50, le=200),
+    db: Session = Depends(get_db),
+    current_user=Depends(require_dispatcher),
+):
+    """List plan history entries for the tenant, newest first."""
+    from app.models.plan_history import PlanHistory
+    stmt = (
+        select(PlanHistory)
+        .where(PlanHistory.tenant_id == current_user.tenant_id)
+        .order_by(PlanHistory.created_at.desc())
+        .limit(limit)
+    )
+    if plan_date:
+        stmt = stmt.where(PlanHistory.plan_date == plan_date)
+    rows = db.execute(stmt).scalars().all()
+    return rows
+
+
+@router.post("/history", response_model=PlanHistoryOut, status_code=201)
+def create_plan_history(
+    body: PlanHistoryIn,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_dispatcher),
+):
+    """Record a planning event in history."""
+    from app.models.plan_history import PlanHistory
+    entry = PlanHistory(
+        id=uuid4(),
+        tenant_id=current_user.tenant_id,
+        created_by=current_user.id,
+        **body.model_dump(),
+    )
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+    return entry
+
+
+@router.get("/history/{history_id}", response_model=PlanHistoryOut)
+def get_plan_history(
+    history_id: UUID,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_dispatcher),
+):
+    """Get a single plan history entry with its notes."""
+    from app.models.plan_history import PlanHistory
+    entry = db.execute(
+        select(PlanHistory).where(
+            PlanHistory.id == history_id,
+            PlanHistory.tenant_id == current_user.tenant_id,
+        )
+    ).scalar_one_or_none()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Plan history entry not found")
+    return entry
+
+
+@router.post("/history/{history_id}/notes", response_model=PlanNoteOut, status_code=201)
+def add_plan_note(
+    history_id: UUID,
+    body: PlanNoteIn,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_dispatcher),
+):
+    """Add a note or rating to a plan history entry."""
+    from app.models.plan_history import PlanHistory, PlanNote
+    entry = db.execute(
+        select(PlanHistory).where(
+            PlanHistory.id == history_id,
+            PlanHistory.tenant_id == current_user.tenant_id,
+        )
+    ).scalar_one_or_none()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Plan history entry not found")
+    note = PlanNote(
+        id=uuid4(),
+        tenant_id=current_user.tenant_id,
+        plan_history_id=history_id,
+        created_by=current_user.id,
+        **body.model_dump(),
+    )
+    db.add(note)
+    db.commit()
+    db.refresh(note)
+    return note

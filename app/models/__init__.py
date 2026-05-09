@@ -21,6 +21,8 @@ from app.models.marketplace import CapacityOffer, CapacityRequest, CapacityMatch
 from app.models.audit_log import AuditLogEntry
 from app.models.rbac import RbacRole
 from app.models.scenario import ScenarioRun, ScenarioResult
+from app.models.ai_provider import AiProviderConfig
+from app.models.plan_history import PlanHistory, PlanNote
 
 __all__ = [
     "Base", "TimestampMixin", "TenantMixin",
@@ -43,4 +45,6 @@ __all__ = [
     "AuditLogEntry",
     "RbacRole",
     "ScenarioRun", "ScenarioResult",
+    "AiProviderConfig",
+    "PlanHistory", "PlanNote",
 ]
