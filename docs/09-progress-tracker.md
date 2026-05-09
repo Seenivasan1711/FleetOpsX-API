@@ -10,8 +10,8 @@
 ```
 Last Updated  : 2026-05-09
 Current Phase : Phase 5 — Platform Intelligence & UX
-Current Epic  : P5-E0 — Superadmin Auth + Tenant Management (IN PROGRESS — backend done)
-Next Action   : Complete P5-E0 frontend (FE-1 through FE-9), then P5-E1 AI providers
+Current Epic  : P5-E0 — Superadmin Auth + Tenant Management (code complete, pending manual verification)
+Next Action   : Verify P5-E0 manually then start P5-E1 AI Provider Management
 Blocker       : None
 ```
 
@@ -49,15 +49,15 @@ Blocker       : None
 
 | ID | Story | Status | File |
 |----|-------|--------|------|
-| P5-E0-FE-1 | Update `User` type — add `role: 'superadmin'` + `tenants?` field | ⬜ | `src/types/index.ts` |
-| P5-E0-FE-2 | Update `auth.store.ts` — add `effectiveTenantId`, `isReadOnly`, `isSuperadmin` | ⬜ | `src/store/auth.store.ts` |
-| P5-E0-FE-3 | Update `client.ts` interceptor — add `X-Acting-Tenant-Id` header when set | ⬜ | `src/api/client.ts` |
-| P5-E0-FE-4 | `TenantSelector.tsx` — full-page tenant picker (cards, search, act/read buttons) | ⬜ | `src/pages/TenantSelector.tsx` |
-| P5-E0-FE-5 | `SuperadminBanner.tsx` — amber banner: tenant name, mode toggle, exit | ⬜ | `src/components/layout/SuperadminBanner.tsx` |
-| P5-E0-FE-6 | `ConfirmActionModal.tsx` — "Are you sure?" for superadmin mutations | ⬜ | `src/components/shared/ConfirmActionModal.tsx` |
-| P5-E0-FE-7 | Update `AppRoutes.tsx` — add `/select-tenant` route | ⬜ | `src/routes/AppRoutes.tsx` |
-| P5-E0-FE-8 | Update `Login.tsx` — redirect superadmin to `/select-tenant` after login | ⬜ | `src/pages/Login.tsx` |
-| P5-E0-FE-9 | Update `AppShell.tsx` — show SuperadminBanner if isSuperadmin + effectiveTenantId | ⬜ | `src/components/layout/AppShell.tsx` |
+| P5-E0-FE-1 | Update `User` type — add `role: 'superadmin'` + `tenants?` field | ✅ | `src/types/index.ts` |
+| P5-E0-FE-2 | Update `auth.store.ts` — add `effectiveTenantId`, `isReadOnly`, `isSuperadmin` | ✅ | `src/store/auth.store.ts` |
+| P5-E0-FE-3 | Update `client.ts` interceptor — add `X-Acting-Tenant-Id` header when set | ✅ | `src/api/client.ts` |
+| P5-E0-FE-4 | `TenantSelector.tsx` — full-page tenant picker (cards, search, act/read buttons) | ✅ | `src/pages/TenantSelector.tsx` |
+| P5-E0-FE-5 | `SuperadminBanner.tsx` — amber banner: tenant name, mode toggle, exit | ✅ | `src/components/layout/SuperadminBanner.tsx` |
+| P5-E0-FE-6 | `ConfirmActionModal.tsx` — "Are you sure?" for superadmin mutations | ✅ | `src/components/shared/ConfirmActionModal.tsx` |
+| P5-E0-FE-7 | Update `AppRoutes.tsx` — add `/select-tenant` route | ✅ | `src/routes/AppRoutes.tsx` |
+| P5-E0-FE-8 | Update `Login.tsx` — redirect superadmin to `/select-tenant` after login | ✅ | `src/pages/Login.tsx` |
+| P5-E0-FE-9 | Update `AppShell.tsx` — show SuperadminBanner if isSuperadmin + effectiveTenantId | ✅ | `src/components/layout/AppShell.tsx` |
 | P5-E0-FE-VER | Login as superadmin → see tenant list → select → banner shown → exit works | ⬜ | Manual test |
 
 ---
