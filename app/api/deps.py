@@ -80,6 +80,13 @@ def require_platform_admin(current_user: User = Depends(get_current_user)) -> Us
     return current_user
 
 
+def require_tenant_admin(current_user: User = Depends(get_current_user)) -> User:
+    """Allows tenant admin or superadmin — tenant user management (P5-E8)."""
+    if current_user.role not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Tenant admin role required")
+    return current_user
+
+
 def require_permission(permission: str):
     """Factory dep: raises 403 if the authenticated user lacks the given permission."""
     def _check(
