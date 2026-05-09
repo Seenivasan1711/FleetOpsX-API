@@ -54,6 +54,26 @@ def ping_location(
         heading=body.heading_deg,
         vehicle_id=str(body.vehicle_id) if body.vehicle_id else None,
     )
+    # Broadcast real-time location to all dispatcher clients for this tenant
+    import asyncio
+    from app.api.v1.ws import manager as ws_manager
+    try:
+        asyncio.get_event_loop().create_task(ws_manager.broadcast(
+            str(current_user.tenant_id),
+            {
+                "type": "location_update",
+                "tenant_id": str(current_user.tenant_id),
+                "payload": {
+                    "driver_id":   str(driver.id),
+                    "driver_name": driver.full_name,
+                    "lat":         body.latitude,
+                    "lng":         body.longitude,
+                    "speed_kmh":   body.speed_kmh,
+                },
+            },
+        ))
+    except RuntimeError:
+        pass  # No running event loop (sync context) — skip broadcast
     return ping
 
 

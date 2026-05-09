@@ -4,7 +4,7 @@ from app.api.v1 import (
     auth, depots, drivers, vehicles, customers, orders, planning, driver,
     tenants, agent_logs, tracking, sla, analytics, agent_suggestions,
     export, import_orders, fleet, chat, admin, integrations, marketplace,
-    audit, governance, scenarios,
+    audit, governance, scenarios, ws,
 )
 
 api_router = APIRouter()
@@ -33,3 +33,4 @@ api_router.include_router(marketplace.router, prefix="/api/v1")
 api_router.include_router(audit.router, prefix="/api/v1")
 api_router.include_router(governance.router, prefix="/api/v1")
 api_router.include_router(scenarios.router, prefix="/api/v1")
+api_router.include_router(ws.router)  # WebSocket — no /api/v1 prefix, uses /ws/events
