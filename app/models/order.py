@@ -41,6 +41,8 @@ class Order(Base, TimestampMixin, TenantMixin):
         nullable=True, index=True
     )
 
+    tracking_token = Column(UUID(as_uuid=True), nullable=True, unique=True, index=True)
+
     customer = relationship("Customer", back_populates="orders")
     assigned_driver = relationship("Driver", foreign_keys=[assigned_driver_id])
     assigned_vehicle = relationship("Vehicle", foreign_keys=[assigned_vehicle_id])
