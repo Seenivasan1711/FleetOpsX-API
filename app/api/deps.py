@@ -10,6 +10,9 @@ from app.core.security import decode_token
 from app.models.user import User
 from sqlalchemy import select
 
+# Sentinel — used by get_effective_tenant_id default
+_UNSET = object()
+
 logger = logging.getLogger(__name__)
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -88,6 +91,38 @@ def require_permission(permission: str):
             raise HTTPException(status_code=403, detail=f"Permission required: {permission}")
         return current_user
     return _check
+
+
+def get_effective_tenant_id(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    x_acting_tenant_id: Optional[str] = Header(default=None),
+) -> UUID:
+    """Returns the effective tenant_id for the current request.
+
+    For superadmins: uses X-Acting-Tenant-Id header (validated against tenants table).
+    For all other roles: returns user's own tenant_id.
+    """
+    if current_user.role == "superadmin" and x_acting_tenant_id:
+        from app.models.tenant import Tenant
+        try:
+            acting_id = UUID(x_acting_tenant_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid X-Acting-Tenant-Id format")
+
+        tenant = db.execute(
+            select(Tenant).where(Tenant.id == acting_id, Tenant.is_active == True)
+        ).scalar_one_or_none()
+
+        if not tenant:
+            raise HTTPException(status_code=404, detail="Acting tenant not found or inactive")
+
+        return acting_id
+
+    if not current_user.tenant_id:
+        raise HTTPException(status_code=400, detail="No tenant associated with this account")
+
+    return current_user.tenant_id
 
 
 def get_tenant_db(current_user: User = Depends(get_current_user)) -> Generator[Session, None, None]:

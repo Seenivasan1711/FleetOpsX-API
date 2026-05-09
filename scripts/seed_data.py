@@ -216,6 +216,22 @@ def seed(start_date: date, num_days: int = 3):
         db.add(dispatcher_user)
         db.add(driver_user)
 
+        # ── Superadmin user (P5-E0) ────────────────────────────────────────────
+        existing_superadmin = db.execute(
+            select(User).where(User.email == "superadmin@fleetopsx.com")
+        ).scalar_one_or_none()
+        if not existing_superadmin:
+            superadmin_user = User(
+                id=uuid.uuid4(),
+                tenant_id=None,
+                email="superadmin@fleetopsx.com",
+                hashed_password=hash_password("admin1234"),
+                full_name="Platform Admin",
+                role="superadmin",
+                is_active=True,
+            )
+            db.add(superadmin_user)
+
         # Link the first driver record to driver@demo.com so /driver/my-stops works
         if drivers:
             drivers[0].email = "driver@demo.com"
@@ -224,8 +240,9 @@ def seed(start_date: date, num_days: int = 3):
         db.commit()
         print(f"  ✅ {order_count} orders created across {num_days} days")
         print(f"  ✅ Demo users created")
-        print(f"     Dispatcher: dispatcher@demo.com / demo1234")
-        print(f"     Driver:     driver@demo.com / demo1234")
+        print(f"     Superadmin:  superadmin@fleetopsx.com / admin1234")
+        print(f"     Dispatcher:  dispatcher@demo.com / demo1234")
+        print(f"     Driver:      driver@demo.com / demo1234")
 
         print(f"\n🎉 Done! Tenant ID: {tenant.id}")
         print(f"   Start date: {start_date}  |  Days: {num_days}")

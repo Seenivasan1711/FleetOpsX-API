@@ -1,19 +1,82 @@
 """
-Platform-admin endpoints (P4-E1).
+Platform-admin endpoints (P4-E1 + P5-E0).
 
 All routes require superadmin role.
 """
+from datetime import date, datetime, timezone
+from typing import List
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
-from sqlalchemy import select
 
 from app.api.deps import get_db, require_platform_admin
 from app.core.db import encrypt_connection_string, mask_connection_string, refresh_route_cache
-from app.models.user import User
+from app.models.driver import Driver
+from app.models.order import Order
+from app.models.tenant import Tenant
 from app.models.tenant_db_route import TenantDbRoute
+from app.models.user import User
 from app.schemas.tenant_db_route import TenantDbRouteCreate, TenantDbRouteOut
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
+
+
+# ---------------------------------------------------------------------------
+# P5-E0: Tenant list for superadmin
+# ---------------------------------------------------------------------------
+
+class TenantSummary(BaseModel):
+    id: UUID
+    name: str
+    slug: str
+    is_active: bool
+    order_count_today: int
+    driver_count: int
+
+    model_config = {"from_attributes": True}
+
+
+@router.get("/tenants", response_model=List[TenantSummary])
+def list_tenants(
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_platform_admin),
+):
+    """Return all tenants with today's order count and active driver count."""
+    today_start = datetime.combine(date.today(), datetime.min.time()).replace(tzinfo=timezone.utc)
+    today_end = datetime.combine(date.today(), datetime.max.time()).replace(tzinfo=timezone.utc)
+
+    tenants = db.execute(select(Tenant).order_by(Tenant.name)).scalars().all()
+
+    result = []
+    for t in tenants:
+        order_count = db.execute(
+            select(func.count(Order.id)).where(
+                Order.tenant_id == t.id,
+                Order.scheduled_date >= today_start,
+                Order.scheduled_date <= today_end,
+            )
+        ).scalar() or 0
+
+        driver_count = db.execute(
+            select(func.count(Driver.id)).where(
+                Driver.tenant_id == t.id,
+                Driver.is_active == True,
+            )
+        ).scalar() or 0
+
+        result.append(TenantSummary(
+            id=t.id,
+            name=t.name,
+            slug=t.slug,
+            is_active=t.is_active,
+            order_count_today=order_count,
+            driver_count=driver_count,
+        ))
+
+    return result
 
 
 @router.post("/tenant-db-routes", response_model=TenantDbRouteOut, status_code=201)
