@@ -11,7 +11,7 @@ from typing import List, Optional
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -36,7 +36,7 @@ class UserOut(BaseModel):
 
 
 class InviteIn(BaseModel):
-    email:     EmailStr
+    email:     str
     full_name: str
     role:      str = "dispatcher"
 
