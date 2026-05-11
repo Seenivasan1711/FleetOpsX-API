@@ -74,9 +74,9 @@ def require_driver(current_user: User = Depends(get_current_user)) -> User:
 
 
 def require_platform_admin(current_user: User = Depends(get_current_user)) -> User:
-    """Only allows superadmin role — platform-level operations (P4-E1+)."""
-    if current_user.role != "superadmin":
-        raise HTTPException(status_code=403, detail="Platform admin role required")
+    """Allows admin or superadmin role — platform-level operations."""
+    if current_user.role not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
     return current_user
 
 
