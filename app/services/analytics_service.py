@@ -8,7 +8,7 @@ get_driver_performance(): per-driver aggregate for date range
 import logging
 import math
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -304,4 +304,63 @@ def get_driver_performance(db: Session, tenant_id: str, since: date) -> list[dic
         })
 
     result.sort(key=lambda x: (x["on_time_rate"] or 0), reverse=True)
+    return result
+
+
+# ---------------------------------------------------------------------------
+# KPI Trend (Phase 6 — sparklines)
+# ---------------------------------------------------------------------------
+
+def get_kpi_trend(db: Session, tenant_id: str, days: int = 7) -> list[dict[str, Any]]:
+    """Return per-day KPI values for the last N days (for dashboard sparklines)."""
+    tid = UUID(tenant_id)
+    today = date.today()
+    since = today - timedelta(days=days - 1)
+
+    rows = db.execute(
+        select(DeliveryAnalytics)
+        .where(
+            DeliveryAnalytics.tenant_id == tid,
+            DeliveryAnalytics.delivery_date >= since,
+            DeliveryAnalytics.delivery_date <= today,
+        )
+    ).scalars().all()
+
+    # Build per-date buckets
+    buckets: dict[str, dict] = {}
+    for d in range(days):
+        day = since + timedelta(days=d)
+        buckets[str(day)] = {
+            "date": str(day),
+            "orders_count": 0,
+            "on_time_count": 0,
+            "driver_ids": set(),
+        }
+
+    for r in rows:
+        key = str(r.delivery_date)
+        if key not in buckets:
+            continue
+        buckets[key]["orders_count"] += 1
+        if r.was_on_time:
+            buckets[key]["on_time_count"] += 1
+        if r.driver_id:
+            buckets[key]["driver_ids"].add(str(r.driver_id))
+
+    result = []
+    for key in sorted(buckets.keys()):
+        b = buckets[key]
+        total = b["orders_count"]
+        on_time = b["on_time_count"]
+        active_drivers = len(b["driver_ids"])
+        on_time_pct = round(on_time / total * 100, 1) if total > 0 else None
+        fleet_efficiency = on_time_pct  # simplified: efficiency = on-time %
+        result.append({
+            "date": key,
+            "orders_count": total,
+            "on_time_pct": on_time_pct,
+            "active_drivers": active_drivers,
+            "fleet_efficiency": fleet_efficiency,
+        })
+
     return result

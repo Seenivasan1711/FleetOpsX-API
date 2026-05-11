@@ -28,7 +28,7 @@ def list_drivers(
     db: Session = Depends(get_db),
     tenant_id: str = Depends(require_tenant_id),
 ):
-    return driver_service.list_drivers(db, tenant_id, active_only=active_only, depot_id=depot_id)
+    return driver_service.list_drivers_enriched(db, tenant_id, active_only=active_only, depot_id=depot_id)
 
 
 @router.get("/{driver_id}", response_model=DriverResponse)
@@ -37,7 +37,7 @@ def get_driver(
     db: Session = Depends(get_db),
     tenant_id: str = Depends(require_tenant_id),
 ):
-    obj = driver_service.get_driver(db, tenant_id, driver_id)
+    obj = driver_service.get_driver_enriched(db, tenant_id, driver_id)
     if not obj:
         raise HTTPException(status_code=404, detail="Driver not found")
     return obj

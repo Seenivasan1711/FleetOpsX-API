@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Float, Boolean, DateTime, Time, Integer, ForeignKey, Text
+from sqlalchemy import Column, String, Float, Boolean, DateTime, Time, Integer, ForeignKey, Text, Numeric
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.models.base import Base, TimestampMixin, TenantMixin
@@ -40,6 +40,8 @@ class Order(Base, TimestampMixin, TenantMixin):
         UUID(as_uuid=True), ForeignKey("vehicles.id", ondelete="SET NULL"),
         nullable=True, index=True
     )
+
+    value = Column(Numeric(12, 2), nullable=True)
 
     tracking_token = Column(UUID(as_uuid=True), nullable=True, unique=True, index=True)
 

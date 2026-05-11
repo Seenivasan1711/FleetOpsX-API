@@ -1,6 +1,6 @@
 # FleetOpsX — System Architecture
 
-**Version:** 2.0 (Phase 5)
+**Version:** 3.0 (Phase 6 — Redesign V2)
 
 ---
 
@@ -222,7 +222,183 @@ Backend (deps.py):
 
 ---
 
-## 8. Security
+## 8. Phase 6 Architecture — Redesign V2
+
+### Navigation Structure (Frontend)
+
+```
+Sidebar (redesigned)
+├── OPERATIONS (section label)
+│   ├── Dashboard      /
+│   ├── Orders         /orders
+│   ├── Planning       /planning
+│   ├── Live Map       /map
+│   ├── Plan History   /plan-history
+│   └── Drivers        /drivers
+├── INSIGHTS (section label)
+│   ├── Analytics      /analytics
+│   └── Settings       /settings
+└── Fleet & Platform (collapsible)
+    ├── Vehicles       /vehicles
+    ├── Depots         /depots
+    ├── Integrations   /integrations
+    ├── Marketplace    /marketplace
+    ├── Governance     /governance
+    ├── Scenarios      /scenarios
+    ├── AI Providers   /admin/ai-providers
+    └── Team           /team
+```
+
+### Topbar Architecture
+
+```
+[Page Title + Breadcrumb]   [⌘K Global Search]   [Ask AI] [🔔 Bell] [Avatar]
+                                    ↓                  ↓
+                            CommandPalette        ChatDrawer (420px slide-over)
+                            (Modal overlay)       (replaces FAB + /chat page)
+```
+
+### Chat Architecture (V2 — MongoDB-backed)
+
+```
+TopBar "Ask AI" click
+  → ChatDrawer opens (420px right panel)
+  → GET /chat/conversations → conversation list
+  → Select or create conversation
+  → GET /chat/conversations/{id}/messages → message history
+  → User sends message
+  → POST /chat/conversations/{id}/messages
+      Backend:
+        1. Fetch last 10 messages from MongoDB
+        2. Build [{role, content}] array for LLM messages param
+        3. Inject fleet context in system message
+        4. LLM generates structured response
+        5. Save AI message to MongoDB
+        6. Return response
+  → ChatDrawer renders message
+```
+
+**MongoDB Collections (Motor async):**
+
+```
+chat_conversations
+  _id: ObjectId
+  tenant_id: str
+  user_id: str
+  title: str (auto-derived from first message)
+  created_at: datetime
+  updated_at: datetime
+
+chat_messages
+  _id: ObjectId
+  conversation_id: ObjectId (ref → chat_conversations)
+  role: "user" | "assistant"
+  content: str
+  card_data: dict | null  (structured card for AI responses)
+  created_at: datetime
+```
+
+### New API Endpoints (Phase 6)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/analytics/kpi-trend?days=7` | Daily KPI time-series for sparklines |
+| GET | `/plan/timeline?date=YYYY-MM-DD` | Gantt data: driver schedules + stop times |
+| GET | `/chat/conversations` | List user's conversations |
+| POST | `/chat/conversations` | Create new conversation |
+| GET | `/chat/conversations/{id}/messages` | Fetch all messages in conversation |
+| POST | `/chat/conversations/{id}/messages` | Send message + get AI reply |
+| DELETE | `/chat/conversations/{id}` | Delete conversation |
+
+### New/Extended Data Models (Phase 6)
+
+**Order (extended):**
+```python
+priority: str = "NORMAL"          # LOW | NORMAL | HIGH | CRITICAL
+value: Decimal | None             # monetary value of delivery
+time_window_start: time | None    # earliest delivery time (already exists — confirm)
+time_window_end: time | None      # latest delivery time (already exists — confirm)
+```
+
+**Driver (computed fields in response):**
+```python
+utilization_pct: float   # today's assigned hours / available hours * 100
+performance_score: float # rolling 30-day on-time delivery % (0–100)
+```
+
+**KPI Trend response:**
+```json
+[
+  {
+    "date": "2026-05-05",
+    "orders_count": 42,
+    "on_time_pct": 91.3,
+    "active_drivers": 8,
+    "fleet_efficiency": 78.5
+  }
+]
+```
+
+**Route Timeline response:**
+```json
+[
+  {
+    "driver_id": "uuid",
+    "driver_name": "Ravi Kumar",
+    "stops": [
+      { "order_id": "uuid", "address": "...", "start_time": "09:00", "end_time": "09:30", "status": "DELIVERED" }
+    ]
+  }
+]
+```
+
+### Command Palette (⌘K) Architecture
+
+```
+KeyboardEvent (⌘K / Ctrl+K)
+  → CommandPalette modal opens
+  → Input: debounced search
+  → Results (no API calls — all from local cache):
+      pages[]       — static nav items
+      orders[]      — from React Query cache (queryKey: ['orders', ...])
+      drivers[]     — from React Query cache (queryKey: ['drivers'])
+  → Select item → navigate / open modal
+```
+
+### Frontend Component Map (Phase 6 additions)
+
+```
+src/
+  components/
+    layout/
+      Sidebar.tsx          (redesigned — 3-section nav + collapsible)
+      Topbar.tsx           (search + Ask AI button)
+      ChatDrawer.tsx       (NEW — replaces ChatPanel + ChatPage)
+      CommandPalette.tsx   (NEW — ⌘K global search)
+    dashboard/
+      KpiCard.tsx          (NEW — value + sparkline + delta)
+      LiveOpsTicker.tsx    (NEW — scrolling alert strip)
+      RouteGantt.tsx       (NEW — horizontal timeline)
+      AtRiskInbox.tsx      (NEW — at-risk panel with AI chips)
+      FleetAvailability.tsx(NEW — 3 availability cards)
+  pages/
+    Dashboard.tsx          (full redesign)
+    Orders.tsx             (tab filters + new columns)
+    Drivers.tsx            (avatar + score bars)
+    Analytics.tsx          (sparkline KPI cards)
+    Settings.tsx           (color mode picker)
+    Planning.tsx           (scenario comparison cards)
+    LiveMap.tsx            (driver feed panel)
+    PlanHistory.tsx        (timeline card list)
+  api/
+    chat.ts                (NEW — conversations CRUD)
+    analytics.ts           (extended — kpi-trend endpoint)
+    planning.ts            (extended — timeline endpoint)
+```
+
+---
+
+## 9. Security (unchanged)
 
 | Concern | Implementation |
 |---------|----------------|

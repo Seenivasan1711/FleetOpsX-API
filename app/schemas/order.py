@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from uuid import UUID
 from typing import Optional
+from decimal import Decimal
 from datetime import datetime, time
 
 
@@ -21,6 +22,7 @@ class OrderBase(BaseModel):
     quantity_units: Optional[int] = None
     requires_refrigeration: bool = False
     priority: str = "NORMAL"
+    value: Optional[Decimal] = None
     notes: Optional[str] = None
 
 

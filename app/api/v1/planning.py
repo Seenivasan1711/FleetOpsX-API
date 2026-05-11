@@ -339,3 +339,51 @@ def add_plan_note(
     db.commit()
     db.refresh(note)
     return note
+
+
+@router.get("/timeline")
+def route_timeline(
+    plan_date: date = Query(..., description="Date to show timeline for (YYYY-MM-DD)"),
+    db: Session = Depends(get_db),
+    current_user=Depends(require_dispatcher),
+):
+    """Return per-driver stop schedules for a given date (Gantt chart data)."""
+    from app.models.route_plan import RoutePlan, Route, RouteStop
+    from app.models.driver import Driver
+    from app.models.order import Order
+
+    tid = current_user.tenant_id
+    rows = db.execute(
+        select(Route, RouteStop, Driver, Order)
+        .join(RoutePlan, Route.plan_id == RoutePlan.id)
+        .join(RouteStop, RouteStop.route_id == Route.id)
+        .join(Driver, Route.driver_id == Driver.id)
+        .join(Order, RouteStop.order_id == Order.id)
+        .where(
+            RoutePlan.tenant_id == tid,
+            RoutePlan.plan_date == plan_date,
+        )
+        .order_by(Route.driver_id, RouteStop.sequence)
+    ).all()
+
+    # Group by driver
+    drivers: dict[str, dict] = {}
+    for route, stop, driver, order in rows:
+        key = str(driver.id)
+        if key not in drivers:
+            drivers[key] = {
+                "driver_id": key,
+                "driver_name": driver.full_name,
+                "stops": [],
+            }
+        drivers[key]["stops"].append({
+            "order_id": str(order.id),
+            "address": order.delivery_address,
+            "sequence": stop.sequence,
+            "start_time": stop.estimated_arrival,
+            "end_time": None,
+            "status": stop.status,
+            "priority": order.priority,
+        })
+
+    return list(drivers.values())

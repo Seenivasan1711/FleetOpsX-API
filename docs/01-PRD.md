@@ -1,7 +1,7 @@
 # FleetOpsX — Product Requirements Document (PRD)
 
-**Version:** 2.0  
-**Status:** Phase 5 planning  
+**Version:** 3.0  
+**Status:** Phase 6 — UI/UX Redesign V2 (active)  
 **Owner:** Seenivasan (Platform Admin)
 
 ---
@@ -36,6 +36,7 @@ FleetOpsX is a **multi-tenant AI-powered fleet dispatch SaaS** that gives logist
 | Phase 3 | Multi-agent, analytics ETL, AI suggestions, monitor agent | ✅ Done |
 | Phase P | Chat AI, Excel export/import, live map, 3-plan options, UI overhaul | ✅ Done |
 | Phase 4 | Multi-region DB, webhooks, capacity marketplace, governance, scenarios | ✅ Done |
+| Phase 5 | Superadmin, AI providers, multi-scenario, plan history, chat redesign, PWA, WebSocket, tracking, user mgmt | ✅ Done |
 
 ---
 
@@ -214,3 +215,90 @@ Fleet context:
 | Multi-tenant isolation | Complete — no cross-tenant data leakage |
 | GDPR | Data export on request, configurable retention |
 | Mobile driver app | Works offline, < 200ms GPS ping |
+
+---
+
+## 7. Phase 6 — UI/UX Redesign V2
+
+**Branch:** `redesign/v2-ux`  
+**Reference:** claude.ai/design/p/019e0e94 (10 screenshots)  
+**Started:** 2026-05-10  
+**Goal:** Elevate the product to next-level UX — richer dashboard, smarter AI integration, cleaner navigation, MongoDB-backed chat history.
+
+### Design Decisions (locked)
+
+| Topic | Decision |
+|-------|----------|
+| Navigation | OPERATIONS + INSIGHTS sections + "Fleet & Platform" collapsible for secondary items |
+| AI Chat entry | Topbar "Ask AI" slide-over drawer only — remove floating FAB and /chat page |
+| Chat persistence | MongoDB (Motor) — ChatConversation + ChatMessage collections |
+| Multi-turn AI | Last N messages sent as `[{role, content}]` context array on each request |
+| Global search | ⌘K command palette — searches orders, drivers, pages from React Query cache |
+| Order model | Add: `priority`, `value`, `time_window_start`, `time_window_end` (new Alembic migration) |
+| Driver model | Add: `utilization_pct`, `performance_score` (computed, returned in DriverOut) |
+| Dashboard | KPI sparklines (7-day trend), Route Timeline Gantt, At-Risk Inbox, Live Ops ticker |
+
+### P6-E1: Shell & Navigation
+
+New sidebar structure:
+- **OPERATIONS:** Dashboard, Orders, Planning, Live Map, Plan History, Drivers
+- **INSIGHTS:** Analytics, Settings
+- **Fleet & Platform (collapsible):** Vehicles, Depots, Integrations, Marketplace, Governance, Scenarios, AI Providers, Team
+
+Topbar: page title left · global search center · Ask AI + notifications right.
+
+### P6-E2: Dashboard V2
+
+Replaces the current dashboard with:
+1. **KPI Cards** — 4 cards with embedded 7-day sparkline charts (Recharts)
+2. **Live Ops Ticker** — scrolling alert strip for delayed orders and driver issues
+3. **Route Timeline Gantt** — horizontal driver schedule for today
+4. **At-Risk Inbox** — orders at SLA risk with AI action chips
+5. **Fleet Availability** — 3 stat cards (Drivers / Vehicles / Efficiency)
+6. **Quick Actions** — icon+title+subtitle action card grid
+
+### P6-E3: Page Redesigns
+
+| Page | Key Changes |
+|------|-------------|
+| Orders | Tab filter strip · VALUE, PRIORITY, WINDOW columns · bulk actions |
+| AI Planning | Scenario comparison cards · confidence badge · plan detail table |
+| Live Map | Driver feed panel · live driver status pills · Optimize Live button |
+| Plan History | Timeline card list · inline KPI stats per plan |
+| Drivers | Avatar initials · performance score bar · utilization bar |
+| Analytics | Sparkline KPI cards · horizontal utilization bars · heatmap |
+| Settings | Visual color mode picker · alert preference toggles |
+
+### P6-E4: AI Chat Overhaul
+
+- **Topbar "Ask AI"** → opens 420px right slide-over drawer
+- Conversation list (grouped by Today / Yesterday / Past 7 days)
+- Conversation history persisted in MongoDB
+- Multi-turn context: last 10 messages sent to LLM on each request
+- MongoDB API endpoints: `GET/POST /chat/conversations`, `GET/POST /chat/conversations/{id}/messages`, `DELETE /chat/conversations/{id}`
+
+### P6-E5: Command Palette (⌘K)
+
+- Keyboard-triggered modal
+- Searches: nav pages (static) · orders (React Query cache) · drivers (React Query cache)
+- Keyboard navigation ↑↓ + Enter
+- No extra API calls — all local
+
+### P6-E6: Backend Extensions
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /analytics/kpi-trend?days=7` | Daily KPI time-series for sparklines |
+| `GET /plan/timeline?date=YYYY-MM-DD` | Gantt data: driver schedules with stop times |
+| `GET /chat/conversations` | List user's MongoDB conversations |
+| `POST /chat/conversations` | Create new conversation |
+| `GET /chat/conversations/{id}/messages` | Fetch messages |
+| `POST /chat/conversations/{id}/messages` | Send message + get AI reply |
+| `DELETE /chat/conversations/{id}` | Delete conversation |
+
+New Order fields: `priority` (enum), `value` (Decimal), `time_window_start`/`end` (time).  
+New Driver computed fields: `utilization_pct` (float), `performance_score` (float 0-100).
+
+### P6 Task List (29 tasks)
+
+See `docs/09-progress-tracker.md` for full story-level breakdown.
