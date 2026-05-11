@@ -10,10 +10,10 @@
 ```
 Last Updated  : 2026-05-11
 Current Phase : Phase 6 — UI/UX Redesign V2
-Branch        : redesign/v2-ux
+Branch        : redesign/v2-ux (local only — push to GitHub before PR)
 Reference     : claude.ai/design/p/019e0e94
-Status        : Documentation & planning complete — implementation starting
-Next Action   : #5 (design tokens) + #23 (BE audit) in parallel
+Status        : Implementation complete — polish + push pending
+Next Action   : push redesign/v2-ux to origin (both repos), then open PR
 Blocker       : None
 ```
 
@@ -39,37 +39,37 @@ Blocker       : None
 
 ### Task Overview
 
-| # | Task | Category | Status | Depends On |
-|---|------|----------|--------|------------|
-| #5 | Design tokens, color palette, typography | Foundation | ⬜ Not Started | — |
-| #6 | Sidebar — OPERATIONS/INSIGHTS + Fleet & Platform collapsible | Shell | ⬜ Not Started | #5 |
-| #7 | Topbar — global search + Ask AI CTA | Shell | ⬜ Not Started | #5 |
-| #8 | Dashboard — KPI cards with sparklines | Dashboard | ⬜ Not Started | #5, #29 |
-| #9 | Dashboard — Live Ops ticker banner | Dashboard | ⬜ Not Started | #5 |
-| #10 | Dashboard — Route Timeline Gantt | Dashboard | ⬜ Not Started | #5, #30 |
-| #11 | Dashboard — At-Risk Inbox panel | Dashboard | ⬜ Not Started | #5 |
-| #12 | Dashboard — Fleet availability 3 cards | Dashboard | ⬜ Not Started | #5 |
-| #13 | Dashboard — Quick Actions redesign | Dashboard | ⬜ Not Started | #5 |
-| #14 | Orders — tab filters + VALUE/PRIORITY/WINDOW columns | Pages | ⬜ Not Started | #5, #27 |
-| #15 | AI Planning — scenario comparison + plan detail | Pages | ⬜ Not Started | #5 |
-| #16 | Live Map — driver feed panel + optimize button | Pages | ⬜ Not Started | #5 |
-| #17 | Plan History — clean card list with inline stats | Pages | ⬜ Not Started | #5 |
-| #18 | Drivers — avatars, score bars, status pills | Pages | ⬜ Not Started | #5, #28 |
-| #19 | Analytics — sparkline KPI cards + utilization bars | Pages | ⬜ Not Started | #5 |
-| #20 | Settings — color mode picker + alert toggles | Pages | ⬜ Not Started | #5 |
-| #21 | Ask AI drawer panel redesign (remove /chat page + FAB) | Chat/AI | ⬜ Not Started | #5 |
-| #22 | ⌘K global command palette | Shell | ⬜ Not Started | #5 |
-| #23 | BE audit — document existing Order/Driver fields | Backend | ⬜ Not Started | — |
-| #24 | Animations & micro-interactions | Polish | ⬜ Not Started | #5–#22 |
-| #25 | Light mode audit | Polish | ⬜ Not Started | #5–#22 |
-| #26 | Git — structured commits + PR | Close | ⬜ Not Started | #24, #25 |
-| #27 | BE — Order: add priority, value, time_window + migration | Backend | ⬜ Not Started | #23 |
-| #28 | BE — Driver: add utilization_pct, performance_score | Backend | ⬜ Not Started | #23 |
-| #29 | BE — Daily KPI trend endpoint for sparklines | Backend | ⬜ Not Started | — |
-| #30 | BE — Route timeline endpoint for Gantt | Backend | ⬜ Not Started | — |
-| #31 | BE — MongoDB chat history (ChatConversation + ChatMessage CRUD) | Backend | ⬜ Not Started | — |
-| #32 | BE — Multi-turn AI context (send history to LLM) | Backend | ⬜ Not Started | #31 |
-| #33 | FE — Wire chat to MongoDB API (replace localStorage) | Chat/AI | ⬜ Not Started | #31, #32, #21 |
+| # | Task | Category | Status | Commit |
+|---|------|----------|--------|--------|
+| #5  | Design tokens, color palette, typography | Foundation | ✅ Done | `cf793c9` (UI) |
+| #6  | Sidebar — OPERATIONS/INSIGHTS + Fleet & Platform collapsible | Shell | ✅ Done | `cf793c9` (UI) |
+| #7  | Topbar — global search + Ask AI CTA | Shell | ✅ Done | `cf793c9` (UI) |
+| #8  | Dashboard — KPI cards with sparklines | Dashboard | ✅ Done | `29b9dc9` (UI) |
+| #9  | Dashboard — Live Ops ticker banner | Dashboard | ✅ Done | `29b9dc9` (UI) |
+| #10 | Dashboard — Route Timeline Gantt | Dashboard | ✅ Done | `29b9dc9` (UI) |
+| #11 | Dashboard — At-Risk Inbox + AI action chips | Dashboard | ✅ Done | `6a68d7b` (UI) |
+| #12 | Dashboard — Fleet availability 3 cards | Dashboard | ✅ Done | `29b9dc9` (UI) |
+| #13 | Dashboard — Quick Actions redesign (icon+title+subtitle) | Dashboard | ✅ Done | `29b9dc9` (UI) |
+| #14 | Orders — tab filters + VALUE/PRIORITY/WINDOW columns | Pages | ✅ Done | `cf793c9` (UI) |
+| #15 | AI Planning — scenario comparison + plan detail | Pages | ✅ Done | `cf793c9` (UI) |
+| #16 | Live Map — driver feed panel + optimize button | Pages | ✅ Done | `1b2902e` (UI) |
+| #17 | Plan History — clean card list with inline stats | Pages | ✅ Done | pre-existing |
+| #18 | Drivers — avatars, score bars, status pills, utilization | Pages | ✅ Done | `cf793c9` (UI) |
+| #19 | Analytics — sparkline KPI cards + utilization bars | Pages | ✅ Done | `72b1538` (UI) |
+| #20 | Settings — color mode picker + alert toggles | Pages | ✅ Done | pre-existing |
+| #21 | Ask AI drawer — wired to conversations API (MongoDB-aware) | Chat/AI | ✅ Done | `29b9dc9` (UI) |
+| #22 | ⌘K global command palette | Shell | ✅ Done | `cf793c9` (UI) |
+| #23 | BE audit — document existing Order/Driver fields | Backend | ✅ Done | `bdcde15` (API) |
+| #24 | Animations & micro-interactions | Polish | 🟡 Partial | CSS done; number counters exist |
+| #25 | Light mode audit | Polish | 🟡 Pending visual review | no code gaps |
+| #26 | Git — push branches + PR | Close | ⬜ Manual step | push to origin |
+| #27 | BE — Order: add value field + migration | Backend | ✅ Done | `bdcde15` (API) |
+| #28 | BE — Driver: utilization_pct, performance_score | Backend | ✅ Done | `bdcde15` (API) |
+| #29 | BE — Daily KPI trend endpoint | Backend | ✅ Done | `bdcde15` (API) |
+| #30 | BE — Route timeline endpoint for Gantt | Backend | ✅ Done | `bdcde15` (API) |
+| #31 | BE — MongoDB chat history CRUD | Backend | ✅ Done | `bdcde15` + `359c6b3` (API) |
+| #32 | BE — Multi-turn AI context (history sent to LLM) | Backend | ✅ Done | `359c6b3` (API) |
+| #33 | FE — Wire chat to MongoDB conversations API | Chat/AI | ✅ Done | `29b9dc9` (UI) |
 
 ---
 
