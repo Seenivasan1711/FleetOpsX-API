@@ -74,6 +74,13 @@ def seed(start_date: date, num_days: int = 3):
         print("🌱 Seeding FleetOpsX demo data for Bangalore...")
 
         # ── Tenant ────────────────────────────────────────────────────────────
+        existing_tenant = db.execute(
+            select(Tenant).where(Tenant.slug == "fleetopsx-demo")
+        ).scalar_one_or_none()
+        if existing_tenant:
+            print("  ♻️ Existing demo tenant found — replacing with fresh demo data")
+            db.delete(existing_tenant)
+            db.flush()
         tenant = Tenant(
             id=uuid.uuid4(),
             name="FleetOpsX Demo",
