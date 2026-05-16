@@ -1,7 +1,9 @@
 import io
+from datetime import date
+from typing import Optional
 from uuid import UUID
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, func
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
@@ -23,17 +25,32 @@ def _style_header(ws, headers: list[str]):
         ws.column_dimensions[get_column_letter(col)].width = max(len(h) + 4, 14)
 
 
-def orders_to_excel(db: Session, tenant_id: str) -> bytes:
-    orders = db.execute(
-        select(Order).where(Order.tenant_id == UUID(tenant_id))
-    ).scalars().all()
+def orders_to_excel(
+    db: Session,
+    tenant_id: str,
+    plan_date: Optional[date] = None,
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
+) -> bytes:
+    from datetime import datetime, timedelta
+    stmt = select(Order).where(Order.tenant_id == UUID(tenant_id))
+    if plan_date:
+        stmt = stmt.where(func.date(Order.scheduled_date) == plan_date)
+    elif date_from or date_to:
+        if date_from:
+            stmt = stmt.where(Order.scheduled_date >= datetime.combine(date_from, datetime.min.time()))
+        if date_to:
+            stmt = stmt.where(Order.scheduled_date < datetime.combine(date_to, datetime.min.time()) + timedelta(days=1))
+    stmt = stmt.order_by(Order.scheduled_date)
+    orders = db.execute(stmt).scalars().all()
 
     wb = Workbook()
     ws = wb.active
     ws.title = "Orders"
 
     headers = [
-        "ID", "External Ref", "Delivery Address", "Weight (kg)",
+        "ID", "External Ref", "Delivery Address", "Latitude", "Longitude",
+        "Weight (kg)", "Quantity", "Value",
         "Time Window Start", "Time Window End", "Scheduled Date",
         "Status", "Priority", "Requires Refrigeration", "Notes",
     ]
@@ -44,7 +61,11 @@ def orders_to_excel(db: Session, tenant_id: str) -> bytes:
             str(order.id),
             order.external_ref or "",
             order.delivery_address,
+            order.delivery_latitude,
+            order.delivery_longitude,
             order.weight_kg,
+            order.quantity_units,
+            float(order.value) if order.value is not None else "",
             str(order.time_window_start) if order.time_window_start else "",
             str(order.time_window_end) if order.time_window_end else "",
             order.scheduled_date.strftime("%Y-%m-%d") if order.scheduled_date else "",
@@ -101,7 +122,7 @@ def plan_to_excel(db: Session, tenant_id: str, plan_id: UUID) -> bytes | None:
 
 
 def orders_import_template() -> bytes:
-    """Return a blank orders import template with headers and sample row."""
+    """Return a blank orders import template with headers and two sample rows."""
     wb = Workbook()
     ws = wb.active
     ws.title = "Orders Import"
@@ -109,23 +130,20 @@ def orders_import_template() -> bytes:
     headers = [
         "external_ref", "delivery_address", "delivery_latitude", "delivery_longitude",
         "scheduled_date", "time_window_start", "time_window_end",
-        "weight_kg", "priority", "requires_refrigeration", "notes",
+        "weight_kg", "quantity_units", "value",
+        "priority", "requires_refrigeration", "notes",
     ]
     _style_header(ws, headers)
 
-    # sample row
     ws.append([
-        "ORD-001",
-        "123 MG Road, Bangalore",
-        "12.9716",
-        "77.5946",
-        "2026-05-06",
-        "09:00",
-        "17:00",
-        "5.0",
-        "NORMAL",
-        "No",
-        "Leave at door",
+        "ORD-001", "123 MG Road, Bangalore", 12.9716, 77.5946,
+        "2026-05-20", "09:00", "17:00", 5.0, 2, 1500.00,
+        "NORMAL", "No", "Leave at door",
+    ])
+    ws.append([
+        "ORD-002", "456 Indiranagar, Bangalore", 12.9784, 77.6408,
+        "2026-05-20", "10:00", "14:00", 2.5, 1, 750.00,
+        "HIGH", "No", "Call on arrival",
     ])
 
     buf = io.BytesIO()

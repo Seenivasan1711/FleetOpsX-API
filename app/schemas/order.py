@@ -47,9 +47,9 @@ class OrderResponse(OrderBase):
     tenant_id: UUID
     status: str
     assigned_driver_id: Optional[UUID] = None
+    assigned_driver_name: Optional[str] = None
     assigned_vehicle_id: Optional[UUID] = None
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}

@@ -77,6 +77,14 @@ def import_orders_from_excel(db: Session, tenant_id: str, file_bytes: bytes) -> 
         if priority not in _PRIORITY_VALUES:
             priority = "NORMAL"
 
+        def _parse_int(val: Any) -> int | None:
+            if val is None or str(val).strip() == "":
+                return None
+            try:
+                return int(float(val))
+            except (ValueError, TypeError):
+                return None
+
         try:
             order = Order(
                 tenant_id=UUID(tenant_id),
@@ -88,6 +96,8 @@ def import_orders_from_excel(db: Session, tenant_id: str, file_bytes: bytes) -> 
                 time_window_start=_parse_time(row_data.get("time_window_start")),
                 time_window_end=_parse_time(row_data.get("time_window_end")),
                 weight_kg=_parse_float(row_data.get("weight_kg")),
+                quantity_units=_parse_int(row_data.get("quantity_units")),
+                value=_parse_float(row_data.get("value")),
                 priority=priority,
                 requires_refrigeration=_parse_bool(row_data.get("requires_refrigeration")),
                 notes=str(row_data.get("notes") or "").strip() or None,
@@ -101,4 +111,4 @@ def import_orders_from_excel(db: Session, tenant_id: str, file_bytes: bytes) -> 
     if created:
         db.commit()
 
-    return {"created": created, "errors": errors}
+    return {"created": created, "errors": len(errors), "error_details": errors}

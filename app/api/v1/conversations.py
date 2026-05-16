@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, get_current_user
+from app.api.deps import get_db, get_current_user, require_tenant_id
 from app.core.mongo import get_mongo_db, is_mongo_active
 
 router = APIRouter(prefix="/chat/conversations", tags=["Chat"])
@@ -90,12 +90,13 @@ def _msg_out(doc: dict) -> MessageOut:
 async def list_conversations(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
+    tenant_id: str = Depends(require_tenant_id),
 ):
     if not is_mongo_active():
         return []
     mdb = get_mongo_db()
     cursor = mdb["chat_conversations"].find(
-        {"tenant_id": str(current_user.tenant_id), "user_id": str(current_user.id)},
+        {"tenant_id": tenant_id, "user_id": str(current_user.id)},
         sort=[("updated_at", -1)],
         limit=50,
     )
@@ -108,6 +109,7 @@ async def create_conversation(
     body: ConversationCreate,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
+    tenant_id: str = Depends(require_tenant_id),
 ):
     now = _now()
     if not is_mongo_active():
@@ -120,7 +122,7 @@ async def create_conversation(
         )
     mdb = get_mongo_db()
     doc = {
-        "tenant_id": str(current_user.tenant_id),
+        "tenant_id": tenant_id,
         "user_id": str(current_user.id),
         "title": body.title or "New Conversation",
         "created_at": now,
@@ -135,7 +137,7 @@ async def create_conversation(
 async def get_messages(
     conversation_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    tenant_id: str = Depends(require_tenant_id),
 ):
     if not is_mongo_active() or conversation_id == "session":
         return []
@@ -144,7 +146,7 @@ async def get_messages(
         mdb = get_mongo_db()
         conv = await mdb["chat_conversations"].find_one({
             "_id": ObjectId(conversation_id),
-            "tenant_id": str(current_user.tenant_id),
+            "tenant_id": tenant_id,
         })
         if not conv:
             raise HTTPException(status_code=404, detail="Conversation not found")
@@ -165,14 +167,14 @@ async def send_message(
     conversation_id: str,
     body: MessageSend,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    tenant_id: str = Depends(require_tenant_id),
 ):
     now = _now()
     user_msg = MessageOut(id=str(_uuid.uuid4()), role="user", content=body.content, created_at=now)
 
     if not is_mongo_active() or conversation_id == "session":
         # Fallback: use the existing Postgres-backed chat service
-        ai_reply = await _postgres_chat(db, str(current_user.tenant_id), conversation_id, body.content)
+        ai_reply = await _postgres_chat(db, tenant_id, conversation_id, body.content)
         ai_msg   = MessageOut(id=str(_uuid.uuid4()), role="assistant", content=ai_reply, created_at=_now())
         return [user_msg, ai_msg]
 
@@ -182,7 +184,7 @@ async def send_message(
         mdb = get_mongo_db()
         conv = await mdb["chat_conversations"].find_one({
             "_id": ObjectId(conversation_id),
-            "tenant_id": str(current_user.tenant_id),
+            "tenant_id": tenant_id,
         })
         if not conv:
             raise HTTPException(status_code=404, detail="Conversation not found")
@@ -190,7 +192,7 @@ async def send_message(
         # Save user message
         user_doc = {
             "conversation_id": conversation_id,
-            "tenant_id": str(current_user.tenant_id),
+            "tenant_id": tenant_id,
             "role": "user",
             "content": body.content,
             "created_at": now,
@@ -216,11 +218,11 @@ async def send_message(
         history_docs = await history_cursor.to_list(length=_HISTORY_WINDOW * 2)
         history_docs = list(reversed(history_docs[:-1]))
 
-        ai_reply = await _get_ai_reply(db, str(current_user.tenant_id), body.content, history_docs)
+        ai_reply = await _get_ai_reply(db, tenant_id, body.content, history_docs)
 
         ai_doc = {
             "conversation_id": conversation_id,
-            "tenant_id": str(current_user.tenant_id),
+            "tenant_id": tenant_id,
             "role": "assistant",
             "content": ai_reply,
             "created_at": _now(),
@@ -237,7 +239,7 @@ async def send_message(
         raise
     except Exception as exc:
         # Unexpected error — still return a response using Postgres fallback
-        ai_reply = await _postgres_chat(db, str(current_user.tenant_id), conversation_id, body.content)
+        ai_reply = await _postgres_chat(db, tenant_id, conversation_id, body.content)
         ai_msg   = MessageOut(id=str(_uuid.uuid4()), role="assistant", content=ai_reply, created_at=_now())
         return [user_msg, ai_msg]
 
@@ -246,7 +248,7 @@ async def send_message(
 async def delete_conversation(
     conversation_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    tenant_id: str = Depends(require_tenant_id),
 ):
     if not is_mongo_active() or conversation_id == "session":
         return  # graceful no-op
@@ -255,7 +257,7 @@ async def delete_conversation(
         mdb = get_mongo_db()
         await mdb["chat_conversations"].delete_one({
             "_id": ObjectId(conversation_id),
-            "tenant_id": str(current_user.tenant_id),
+            "tenant_id": tenant_id,
         })
         await mdb["chat_messages"].delete_many({"conversation_id": conversation_id})
     except Exception:

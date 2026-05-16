@@ -8,7 +8,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, require_dispatcher
+from app.api.deps import get_db, require_dispatcher, require_tenant_id
 from app.services.sla_service import get_at_risk_stops
 
 router = APIRouter(prefix="/sla", tags=["SLA"])
@@ -18,7 +18,8 @@ router = APIRouter(prefix="/sla", tags=["SLA"])
 def at_risk_stops(
     plan_date: date = Query(..., description="Date to check (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
-    current_user=Depends(require_dispatcher),
+    _=Depends(require_dispatcher),
+    tenant_id: str = Depends(require_tenant_id),
 ):
     """
     Return stops at risk of missing their delivery time window.
@@ -31,6 +32,6 @@ def at_risk_stops(
     """
     return get_at_risk_stops(
         db=db,
-        tenant_id=str(current_user.tenant_id),
+        tenant_id=tenant_id,
         plan_date=plan_date,
     )

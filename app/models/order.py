@@ -49,3 +49,9 @@ class Order(Base, TimestampMixin, TenantMixin):
     assigned_driver = relationship("Driver", foreign_keys=[assigned_driver_id])
     assigned_vehicle = relationship("Vehicle", foreign_keys=[assigned_vehicle_id])
     route_stop = relationship("RouteStop", back_populates="order", uselist=False)
+
+    @property
+    def assigned_driver_name(self) -> str | None:
+        if self.assigned_driver is not None:
+            return self.assigned_driver.full_name
+        return None
