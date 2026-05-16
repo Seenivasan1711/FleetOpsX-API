@@ -22,7 +22,7 @@ def export_orders(
     current_user=Depends(require_dispatcher),
 ):
     data = export_service.orders_to_excel(
-        db, str(current_user.tenant_id),
+        db, current_user.tenant_id,
         plan_date=plan_date, date_from=date_from, date_to=date_to,
     )
     if plan_date:
@@ -44,7 +44,7 @@ def export_plan(
     db: Session = Depends(get_db),
     current_user=Depends(require_dispatcher),
 ):
-    data = export_service.plan_to_excel(db, str(current_user.tenant_id), plan_id)
+    data = export_service.plan_to_excel(db, current_user.tenant_id, plan_id)
     if data is None:
         raise HTTPException(status_code=404, detail="Plan not found")
     return Response(

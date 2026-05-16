@@ -27,13 +27,13 @@ def _style_header(ws, headers: list[str]):
 
 def orders_to_excel(
     db: Session,
-    tenant_id: str,
+    tenant_id: UUID,
     plan_date: Optional[date] = None,
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
 ) -> bytes:
     from datetime import datetime, timedelta
-    stmt = select(Order).where(Order.tenant_id == UUID(tenant_id))
+    stmt = select(Order).where(Order.tenant_id == tenant_id)
     if plan_date:
         stmt = stmt.where(func.date(Order.scheduled_date) == plan_date)
     elif date_from or date_to:
@@ -49,7 +49,7 @@ def orders_to_excel(
     ws.title = "Orders"
 
     headers = [
-        "ID", "External Ref", "Delivery Address", "Latitude", "Longitude",
+        "External Ref", "Delivery Address", "Latitude", "Longitude",
         "Weight (kg)", "Quantity", "Value",
         "Time Window Start", "Time Window End", "Scheduled Date",
         "Status", "Priority", "Requires Refrigeration", "Notes",
@@ -58,7 +58,6 @@ def orders_to_excel(
 
     for order in orders:
         ws.append([
-            str(order.id),
             order.external_ref or "",
             order.delivery_address,
             order.delivery_latitude,
@@ -80,11 +79,11 @@ def orders_to_excel(
     return buf.getvalue()
 
 
-def plan_to_excel(db: Session, tenant_id: str, plan_id: UUID) -> bytes | None:
+def plan_to_excel(db: Session, tenant_id: UUID, plan_id: UUID) -> bytes | None:
     plan = db.execute(
         select(RoutePlan).where(
             RoutePlan.id == plan_id,
-            RoutePlan.tenant_id == UUID(tenant_id),
+            RoutePlan.tenant_id == tenant_id,
         )
     ).scalar_one_or_none()
     if not plan:
@@ -97,14 +96,14 @@ def plan_to_excel(db: Session, tenant_id: str, plan_id: UUID) -> bytes | None:
         driver_name = route.driver.name if route.driver else "Unassigned"
         ws = wb.create_sheet(title=driver_name[:31])  # Excel sheet name max 31 chars
 
-        headers = ["Stop #", "Order ID", "Delivery Address", "Status", "Est. Arrival", "Weight (kg)", "Priority"]
+        headers = ["Stop #", "External Ref", "Delivery Address", "Status", "Est. Arrival", "Weight (kg)", "Priority"]
         _style_header(ws, headers)
 
         for stop in route.stops:
             order = stop.order
             ws.append([
                 stop.sequence,
-                str(stop.order_id),
+                order.external_ref if order else "",
                 order.delivery_address if order else "",
                 stop.status,
                 stop.estimated_arrival or "",

@@ -41,7 +41,7 @@ def _parse_bool(val: Any) -> bool:
     return str(val).strip().lower() in ("yes", "true", "1")
 
 
-def import_orders_from_excel(db: Session, tenant_id: str, file_bytes: bytes) -> dict:
+def import_orders_from_excel(db: Session, tenant_id: UUID, file_bytes: bytes) -> dict:
     wb = load_workbook(filename=io.BytesIO(file_bytes), read_only=True, data_only=True)
     ws = wb.active
 
@@ -87,7 +87,7 @@ def import_orders_from_excel(db: Session, tenant_id: str, file_bytes: bytes) -> 
 
         try:
             order = Order(
-                tenant_id=UUID(tenant_id),
+                tenant_id=tenant_id,
                 external_ref=str(row_data.get("external_ref") or "").strip() or None,
                 delivery_address=str(row_data["delivery_address"]).strip(),
                 delivery_latitude=_parse_float(row_data.get("delivery_latitude")),

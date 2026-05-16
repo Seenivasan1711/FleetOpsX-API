@@ -18,7 +18,7 @@ from typing import Any, Optional
 from uuid import UUID
 
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
-from sqlalchemy import select
+from sqlalchemy import insert as sa_insert, select
 from sqlalchemy.orm import Session
 
 from app.models.driver import Driver
@@ -254,6 +254,19 @@ class ORToolsPlanner(PlannerInterface):
 
         # ── 7. Fallback to RuleBasedPlanner if no solution found ──────────────
         if not solution:
+            if not commit_assignments:
+                # In generate_options context: return empty so this mode is skipped.
+                # RuleBasedPlanner always commits assignments, which would prevent
+                # subsequent modes from seeing pending orders.
+                return {
+                    "message": "OR-Tools could not find a solution for this mode",
+                    "assignments": [], "plan_id": None,
+                    "plan_date": str(plan_date), "status": "DRAFT",
+                    "total_orders": len(orders), "assigned_orders": 0, "total_routes": 0,
+                    "total_distance_km": 0.0, "est_duration_min": 0, "est_fuel_cost": 0.0,
+                    "ai_summary": None, "confidence_score": None, "reasoning_steps": [], "warnings": [],
+                    "planner": "ortools_no_solution",
+                }
             from app.planners.rule_based import RuleBasedPlanner
             result = RuleBasedPlanner().plan_day(db, tenant_id, plan_date)
             result["planner"] = "rule_based_fallback"
@@ -316,14 +329,23 @@ class ORToolsPlanner(PlannerInterface):
             routes_created += 1
 
             for seq, order in enumerate(stop_sequence, start=1):
-                stop = RouteStop(
-                    route_id=route.id,
-                    order_id=order.id,
-                    sequence=seq,
-                    tenant_id=tid,
-                    status="PENDING",
+                # Use Core INSERT to bypass ORM relationship management.
+                # db.add(RouteStop(...)) would trigger uselist=False back-populates
+                # eviction (setting old stop's order_id=NULL → IntegrityError) when
+                # generate_options calls plan_day 3 times for the same order set.
+                now = datetime.utcnow()
+                db.execute(
+                    sa_insert(RouteStop).values(
+                        id=uuid4(),
+                        route_id=route.id,
+                        order_id=order.id,
+                        sequence=seq,
+                        tenant_id=tid,
+                        status="PENDING",
+                        created_at=now,
+                        updated_at=now,
+                    )
                 )
-                db.add(stop)
 
                 if commit_assignments:
                     order.assigned_driver_id = driver.id
