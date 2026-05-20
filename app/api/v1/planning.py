@@ -39,6 +39,7 @@ def plan_day(
 @router.post("/options", response_model=PlanOptionsResponse)
 def plan_options(
     plan_date: date = Query(..., description="Date to generate options for (YYYY-MM-DD)"),
+    user_hints: Optional[str] = Query(None, description="Optional dispatcher hints for the planner"),
     db: Session = Depends(get_db),
     current_user=Depends(require_dispatcher),
 ):
@@ -51,6 +52,7 @@ def plan_options(
         db=db,
         tenant_id=str(current_user.tenant_id),
         plan_date=plan_date,
+        user_hints=user_hints,
     )
     return PlanOptionsResponse(plan_date=plan_date, options=summaries)
 
@@ -63,7 +65,8 @@ def plan_confirm(
 ):
     """
     Confirm a plan variant selected from /plan/options.
-    Applies order assignments, marks the plan PUBLISHED, and cancels the other DRAFT plans.
+    Applies order assignments, marks the plan PUBLISHED, cancels other DRAFT plans,
+    and writes a PlanHistory record so the history page shows this dispatch.
     """
     result = plan_options_service.confirm_plan(
         db=db,
@@ -73,6 +76,20 @@ def plan_confirm(
     )
     if result is None:
         raise HTTPException(status_code=404, detail="Plan not found")
+
+    # Auto-record in plan history so Plan History page reflects this dispatch
+    from app.models.plan_history import PlanHistory
+    history_entry = PlanHistory(
+        tenant_id=current_user.tenant_id,
+        plan_date=data.plan_date,
+        source="or_tools",
+        total_orders=result.get("total_orders"),
+        total_routes=result.get("total_routes"),
+        created_by=current_user.id,
+    )
+    db.add(history_entry)
+    db.commit()
+
     return result
 
 

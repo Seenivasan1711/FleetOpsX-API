@@ -1,3 +1,4 @@
+import logging
 from datetime import date
 from uuid import UUID
 from sqlalchemy.orm import Session
@@ -8,12 +9,23 @@ from app.models.route_plan import RoutePlan, Route, RouteStop
 from app.models.order import Order
 from app.schemas.plan_options import PlanSummary
 
+logger = logging.getLogger(__name__)
 
-def generate_options(db: Session, tenant_id: str, plan_date: date) -> list[PlanSummary]:
+
+def generate_options(
+    db: Session,
+    tenant_id: str,
+    plan_date: date,
+    user_hints: str | None = None,
+) -> list[PlanSummary]:
     """
     Run OR-Tools with each plan_mode without committing order assignments.
     Returns a summary for each mode so the dispatcher can compare and confirm one.
+    user_hints are logged and reserved for the multi-agent planner (future).
     """
+    if user_hints:
+        logger.info("Plan options user_hints for %s: %s", plan_date, user_hints)
+
     from app.planners.ortools_planner import ORToolsPlanner
     planner = ORToolsPlanner()
     summaries: list[PlanSummary] = []
