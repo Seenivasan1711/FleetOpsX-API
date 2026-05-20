@@ -1,3 +1,4 @@
+import csv
 import io
 from datetime import date
 from typing import Optional
@@ -8,6 +9,9 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 
+from app.models.driver import Driver
+from app.models.vehicle import Vehicle
+from app.models.depot import Depot
 from app.models.order import Order
 from app.models.route_plan import RoutePlan, Route, RouteStop
 
@@ -118,6 +122,80 @@ def plan_to_excel(db: Session, tenant_id: UUID, plan_id: UUID) -> bytes | None:
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
+
+
+def drivers_to_csv(db: Session, tenant_id: UUID) -> bytes:
+    drivers = db.execute(
+        select(Driver).where(Driver.tenant_id == tenant_id)
+    ).scalars().all()
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow([
+        "full_name", "phone", "email", "license_number", "license_class",
+        "default_shift_start", "default_shift_end", "is_active",
+    ])
+    for d in drivers:
+        writer.writerow([
+            d.full_name,
+            d.phone or "",
+            d.email or "",
+            d.license_number or "",
+            d.license_class or "",
+            str(d.default_shift_start) if d.default_shift_start else "",
+            str(d.default_shift_end) if d.default_shift_end else "",
+            "Yes" if d.is_active else "No",
+        ])
+    return buf.getvalue().encode("utf-8")
+
+
+def vehicles_to_csv(db: Session, tenant_id: UUID) -> bytes:
+    vehicles = db.execute(
+        select(Vehicle).where(Vehicle.tenant_id == tenant_id)
+    ).scalars().all()
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow([
+        "registration_number", "vehicle_type", "capacity_kg", "capacity_units",
+        "is_refrigerated", "is_active",
+    ])
+    for v in vehicles:
+        writer.writerow([
+            v.registration_number,
+            v.vehicle_type,
+            v.capacity_kg if v.capacity_kg is not None else "",
+            v.capacity_units if v.capacity_units is not None else "",
+            "Yes" if v.is_refrigerated else "No",
+            "Yes" if v.is_active else "No",
+        ])
+    return buf.getvalue().encode("utf-8")
+
+
+def depots_to_csv(db: Session, tenant_id: UUID) -> bytes:
+    depots = db.execute(
+        select(Depot).where(Depot.tenant_id == tenant_id)
+    ).scalars().all()
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow([
+        "name", "address", "city", "state", "country", "pincode",
+        "latitude", "longitude", "is_active",
+    ])
+    for d in depots:
+        writer.writerow([
+            d.name,
+            d.address or "",
+            d.city or "",
+            d.state or "",
+            d.country or "",
+            d.pincode or "",
+            d.latitude if d.latitude is not None else "",
+            d.longitude if d.longitude is not None else "",
+            "Yes" if d.is_active else "No",
+        ])
+    return buf.getvalue().encode("utf-8")
 
 
 def orders_import_template() -> bytes:

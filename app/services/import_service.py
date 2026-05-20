@@ -1,3 +1,4 @@
+import csv
 import io
 from datetime import datetime, time
 from typing import Any
@@ -5,6 +6,9 @@ from uuid import UUID
 from openpyxl import load_workbook
 from sqlalchemy.orm import Session
 
+from app.models.driver import Driver
+from app.models.vehicle import Vehicle
+from app.models.depot import Depot
 from app.models.order import Order
 
 
@@ -104,6 +108,104 @@ def import_orders_from_excel(db: Session, tenant_id: UUID, file_bytes: bytes) ->
                 status="PENDING",
             )
             db.add(order)
+            created += 1
+        except Exception as exc:
+            errors.append(f"Row {row_idx}: {exc}")
+
+    if created:
+        db.commit()
+
+    return {"created": created, "errors": len(errors), "error_details": errors}
+
+
+def import_drivers_from_csv(db: Session, tenant_id: UUID, file_bytes: bytes) -> dict:
+    reader = csv.DictReader(io.StringIO(file_bytes.decode("utf-8")))
+    created = 0
+    errors: list[str] = []
+
+    for row_idx, row in enumerate(reader, start=2):
+        name = str(row.get("full_name") or "").strip()
+        if not name:
+            errors.append(f"Row {row_idx}: missing full_name")
+            continue
+        try:
+            driver = Driver(
+                tenant_id=tenant_id,
+                full_name=name,
+                phone=str(row.get("phone") or "").strip() or None,
+                email=str(row.get("email") or "").strip() or None,
+                license_number=str(row.get("license_number") or "").strip() or None,
+                license_class=str(row.get("license_class") or "").strip() or None,
+                default_shift_start=_parse_time(row.get("default_shift_start")),
+                default_shift_end=_parse_time(row.get("default_shift_end")),
+                is_active=_parse_bool(row.get("is_active", "Yes")),
+            )
+            db.add(driver)
+            created += 1
+        except Exception as exc:
+            errors.append(f"Row {row_idx}: {exc}")
+
+    if created:
+        db.commit()
+
+    return {"created": created, "errors": len(errors), "error_details": errors}
+
+
+def import_vehicles_from_csv(db: Session, tenant_id: UUID, file_bytes: bytes) -> dict:
+    reader = csv.DictReader(io.StringIO(file_bytes.decode("utf-8")))
+    created = 0
+    errors: list[str] = []
+
+    for row_idx, row in enumerate(reader, start=2):
+        reg = str(row.get("registration_number") or "").strip()
+        if not reg:
+            errors.append(f"Row {row_idx}: missing registration_number")
+            continue
+        try:
+            vehicle = Vehicle(
+                tenant_id=tenant_id,
+                registration_number=reg,
+                vehicle_type=str(row.get("vehicle_type") or "VAN").strip().upper() or "VAN",
+                capacity_kg=_parse_float(row.get("capacity_kg")),
+                capacity_units=int(float(row.get("capacity_units"))) if row.get("capacity_units") else None,
+                is_refrigerated=_parse_bool(row.get("is_refrigerated", "No")),
+                is_active=_parse_bool(row.get("is_active", "Yes")),
+            )
+            db.add(vehicle)
+            created += 1
+        except Exception as exc:
+            errors.append(f"Row {row_idx}: {exc}")
+
+    if created:
+        db.commit()
+
+    return {"created": created, "errors": len(errors), "error_details": errors}
+
+
+def import_depots_from_csv(db: Session, tenant_id: UUID, file_bytes: bytes) -> dict:
+    reader = csv.DictReader(io.StringIO(file_bytes.decode("utf-8")))
+    created = 0
+    errors: list[str] = []
+
+    for row_idx, row in enumerate(reader, start=2):
+        name = str(row.get("name") or "").strip()
+        if not name:
+            errors.append(f"Row {row_idx}: missing name")
+            continue
+        try:
+            depot = Depot(
+                tenant_id=tenant_id,
+                name=name,
+                address=str(row.get("address") or "").strip() or None,
+                city=str(row.get("city") or "").strip() or None,
+                state=str(row.get("state") or "").strip() or None,
+                country=str(row.get("country") or "India").strip() or "India",
+                pincode=str(row.get("pincode") or "").strip() or None,
+                latitude=_parse_float(row.get("latitude")),
+                longitude=_parse_float(row.get("longitude")),
+                is_active=_parse_bool(row.get("is_active", "Yes")),
+            )
+            db.add(depot)
             created += 1
         except Exception as exc:
             errors.append(f"Row {row_idx}: {exc}")

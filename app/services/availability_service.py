@@ -81,13 +81,18 @@ def get_fleet_availability(
     tenant_id: str,
     for_date: date_type,
 ) -> dict:
+    from app.models.route_plan import Route, RoutePlan
+    from app.schemas.availability import (
+        DriverCountSummary, VehicleCountSummary, FleetAvailabilityResponse,
+    )
     tid = UUID(tenant_id)
 
+    # ── Drivers ──────────────────────────────────────────────────────────────────
     drivers = db.execute(
         select(Driver).where(Driver.tenant_id == tid, Driver.is_active == True)
     ).scalars().all()
 
-    availability_records = {
+    avail_records = {
         r.driver_id: r
         for r in db.execute(
             select(DriverAvailability).where(
@@ -97,18 +102,33 @@ def get_fleet_availability(
         ).scalars().all()
     }
 
-    driver_summaries = []
-    for d in drivers:
-        avail = availability_records.get(d.id)
-        driver_summaries.append(DriverAvailabilitySummary(
-            driver_id=d.id,
-            driver_name=d.full_name,
-            status=avail.status if avail else "available",
-            shift_start=avail.shift_start if avail else d.default_shift_start,
-            shift_end=avail.shift_end if avail else d.default_shift_end,
-            hours_worked_today=avail.hours_worked_today if avail else 0.0,
-        ))
+    # Drivers who appear in an active route plan for this date
+    drivers_on_route: set = set(
+        row[0] for row in db.execute(
+            select(Route.driver_id)
+            .join(RoutePlan, Route.plan_id == RoutePlan.id)
+            .where(
+                RoutePlan.tenant_id == tid,
+                RoutePlan.plan_date == for_date,
+            )
+        ).all()
+        if row[0] is not None
+    )
 
+    d_counts = DriverCountSummary(total=len(drivers))
+    for d in drivers:
+        avail = avail_records.get(d.id)
+        status = avail.status if avail else "available"
+        if d.id in drivers_on_route:
+            d_counts.on_route += 1
+        elif status == "on_break":
+            d_counts.on_break += 1
+        elif status == "off_duty":
+            d_counts.off_duty += 1
+        else:
+            d_counts.available += 1
+
+    # ── Vehicles ──────────────────────────────────────────────────────────────────
     vehicles = db.execute(
         select(Vehicle).where(Vehicle.tenant_id == tid, Vehicle.is_active == True)
     ).scalars().all()
@@ -120,20 +140,18 @@ def get_fleet_availability(
         ).scalars().all()
     }
 
-    vehicle_summaries = []
+    v_counts = VehicleCountSummary(total=len(vehicles))
     for v in vehicles:
         vs = status_records.get(v.id)
-        vehicle_summaries.append(VehicleStatusSummary(
-            vehicle_id=v.id,
-            registration_number=v.registration_number,
-            vehicle_type=v.vehicle_type,
-            status=vs.status if vs else "available",
-            fuel_level_pct=vs.fuel_level_pct if vs else None,
-            current_mileage=vs.current_mileage if vs else None,
-        ))
+        status = vs.status if vs else "available"
+        fuel = vs.fuel_level_pct if vs else None
+        if status == "in_use":
+            v_counts.in_use += 1
+        elif status == "maintenance":
+            v_counts.maintenance += 1
+        elif fuel is not None and fuel < 25.0:
+            v_counts.low_fuel += 1
+        else:
+            v_counts.available += 1
 
-    return {
-        "date": for_date,
-        "drivers": driver_summaries,
-        "vehicles": vehicle_summaries,
-    }
+    return FleetAvailabilityResponse(drivers=d_counts, vehicles=v_counts)

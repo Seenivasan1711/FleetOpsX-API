@@ -1,13 +1,13 @@
 from uuid import UUID
 from datetime import date
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, require_tenant_id
 from app.schemas.driver import DriverCreate, DriverUpdate, DriverResponse
 from app.schemas.availability import DriverAvailabilityUpdate, DriverAvailabilityResponse
-from app.services import driver_service
-from app.services import availability_service
+from app.services import driver_service, availability_service, export_service, import_service
 
 router = APIRouter(prefix="/drivers", tags=["Drivers"])
 
@@ -29,6 +29,29 @@ def list_drivers(
     tenant_id: str = Depends(require_tenant_id),
 ):
     return driver_service.list_drivers_enriched(db, tenant_id, active_only=active_only, depot_id=depot_id)
+
+
+@router.get("/export", response_class=Response)
+def export_drivers(
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(require_tenant_id),
+):
+    data = export_service.drivers_to_csv(db, UUID(tenant_id))
+    return Response(
+        content=data,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=drivers.csv"},
+    )
+
+
+@router.post("/import")
+def import_drivers(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(require_tenant_id),
+):
+    content = file.file.read()
+    return import_service.import_drivers_from_csv(db, UUID(tenant_id), content)
 
 
 @router.get("/{driver_id}", response_model=DriverResponse)

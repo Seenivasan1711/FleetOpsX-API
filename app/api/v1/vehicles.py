@@ -1,12 +1,12 @@
 from uuid import UUID
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, require_tenant_id
 from app.schemas.vehicle import VehicleCreate, VehicleUpdate, VehicleResponse
 from app.schemas.availability import VehicleStatusUpdate, VehicleStatusResponse
-from app.services import vehicle_service
-from app.services import availability_service
+from app.services import vehicle_service, availability_service, export_service, import_service
 
 router = APIRouter(prefix="/vehicles", tags=["Vehicles"])
 
@@ -28,6 +28,29 @@ def list_vehicles(
     tenant_id: str = Depends(require_tenant_id),
 ):
     return vehicle_service.list_vehicles(db, tenant_id, active_only=active_only, depot_id=depot_id)
+
+
+@router.get("/export", response_class=Response)
+def export_vehicles(
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(require_tenant_id),
+):
+    data = export_service.vehicles_to_csv(db, UUID(tenant_id))
+    return Response(
+        content=data,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=vehicles.csv"},
+    )
+
+
+@router.post("/import")
+def import_vehicles(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    tenant_id: str = Depends(require_tenant_id),
+):
+    content = file.file.read()
+    return import_service.import_vehicles_from_csv(db, UUID(tenant_id), content)
 
 
 @router.get("/{vehicle_id}", response_model=VehicleResponse)

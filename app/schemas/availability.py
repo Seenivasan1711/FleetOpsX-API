@@ -63,7 +63,29 @@ class VehicleStatusSummary(BaseModel):
     current_mileage: Optional[float] = None
 
 
+class DriverCountSummary(BaseModel):
+    available: int = 0
+    on_route:  int = 0
+    on_break:  int = 0
+    off_duty:  int = 0
+    total:     int = 0
+
+
+class VehicleCountSummary(BaseModel):
+    available:   int = 0
+    in_use:      int = 0
+    maintenance: int = 0
+    low_fuel:    int = 0
+    total:       int = 0
+
+
+class EfficiencySummary(BaseModel):
+    capacity_used_pct: float = 0.0
+    idle_time_pct:     float = 0.0
+    avg_detour_pct:    float = 0.0
+
+
 class FleetAvailabilityResponse(BaseModel):
-    date: date
-    drivers: List[DriverAvailabilitySummary]
-    vehicles: List[VehicleStatusSummary]
+    drivers:    DriverCountSummary
+    vehicles:   VehicleCountSummary
+    efficiency: Optional[EfficiencySummary] = None
