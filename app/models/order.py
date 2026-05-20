@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Float, Boolean, DateTime, Time, Integer, ForeignKey, Text
+from sqlalchemy import Column, String, Float, Boolean, DateTime, Time, Integer, ForeignKey, Text, Numeric
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.models.base import Base, TimestampMixin, TenantMixin
@@ -41,9 +41,17 @@ class Order(Base, TimestampMixin, TenantMixin):
         nullable=True, index=True
     )
 
+    value = Column(Numeric(12, 2), nullable=True)
+
     tracking_token = Column(UUID(as_uuid=True), nullable=True, unique=True, index=True)
 
     customer = relationship("Customer", back_populates="orders")
     assigned_driver = relationship("Driver", foreign_keys=[assigned_driver_id])
     assigned_vehicle = relationship("Vehicle", foreign_keys=[assigned_vehicle_id])
     route_stop = relationship("RouteStop", back_populates="order", uselist=False)
+
+    @property
+    def assigned_driver_name(self) -> str | None:
+        if self.assigned_driver is not None:
+            return self.assigned_driver.full_name
+        return None

@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.core.middleware import TenantMiddleware
 from app.api.router import api_router
 from app.workers.scheduler import start_scheduler, stop_scheduler
+from app.core.mongo import connect_mongo, disconnect_mongo
 
 # Configure Sentry
 if settings.SENTRY_DSN:
@@ -26,9 +27,11 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("FleetOpsX API starting up...")
+    connect_mongo()
     start_scheduler()
     yield
     stop_scheduler()
+    disconnect_mongo()
     logger.info("FleetOpsX API shut down")
 
 

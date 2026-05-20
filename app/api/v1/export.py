@@ -1,5 +1,7 @@
+from datetime import date
+from typing import Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
@@ -13,14 +15,26 @@ _XLSX_MEDIA = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
 
 @router.get("/orders")
 def export_orders(
+    plan_date: Optional[date] = Query(None),
+    date_from: Optional[date] = Query(None),
+    date_to:   Optional[date] = Query(None),
     db: Session = Depends(get_db),
     current_user=Depends(require_dispatcher),
 ):
-    data = export_service.orders_to_excel(db, str(current_user.tenant_id))
+    data = export_service.orders_to_excel(
+        db, current_user.tenant_id,
+        plan_date=plan_date, date_from=date_from, date_to=date_to,
+    )
+    if plan_date:
+        filename = f"orders-{plan_date}.xlsx"
+    elif date_from or date_to:
+        filename = f"orders-{date_from or 'start'}_{date_to or 'end'}.xlsx"
+    else:
+        filename = "orders-all.xlsx"
     return Response(
         content=data,
         media_type=_XLSX_MEDIA,
-        headers={"Content-Disposition": "attachment; filename=orders.xlsx"},
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 
@@ -30,7 +44,7 @@ def export_plan(
     db: Session = Depends(get_db),
     current_user=Depends(require_dispatcher),
 ):
-    data = export_service.plan_to_excel(db, str(current_user.tenant_id), plan_id)
+    data = export_service.plan_to_excel(db, current_user.tenant_id, plan_id)
     if data is None:
         raise HTTPException(status_code=404, detail="Plan not found")
     return Response(

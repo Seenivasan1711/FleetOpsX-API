@@ -20,7 +20,7 @@ from app.models.tenant import TenantConfig
 
 # Default models per provider (used when tenant hasn't set a specific model)
 _DEFAULT_MODELS = {
-    "gemini": "gemini-1.5-flash",
+    "gemini": "gemini-2.0-flash",
     "openai": "gpt-4o-mini",
     "anthropic": "claude-haiku-4-5-20251001",
 }

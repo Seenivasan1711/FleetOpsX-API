@@ -22,6 +22,8 @@ def create_order(
 @router.get("/", response_model=List[OrderResponse])
 def list_orders(
     plan_date: Optional[date] = None,
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
     status: Optional[str] = None,
     unassigned_only: bool = False,
     db: Session = Depends(get_db),
@@ -30,6 +32,8 @@ def list_orders(
     return order_service.list_orders(
         db, tenant_id,
         plan_date=plan_date,
+        date_from=date_from,
+        date_to=date_to,
         status=status,
         unassigned_only=unassigned_only,
     )

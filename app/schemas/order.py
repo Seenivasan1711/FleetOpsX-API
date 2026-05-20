@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from uuid import UUID
 from typing import Optional
+from decimal import Decimal
 from datetime import datetime, time
 
 
@@ -21,6 +22,7 @@ class OrderBase(BaseModel):
     quantity_units: Optional[int] = None
     requires_refrigeration: bool = False
     priority: str = "NORMAL"
+    value: Optional[Decimal] = None
     notes: Optional[str] = None
 
 
@@ -45,9 +47,9 @@ class OrderResponse(OrderBase):
     tenant_id: UUID
     status: str
     assigned_driver_id: Optional[UUID] = None
+    assigned_driver_name: Optional[str] = None
     assigned_vehicle_id: Optional[UUID] = None
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}

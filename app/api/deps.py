@@ -54,8 +54,13 @@ def get_current_user(
 
 def require_tenant_id(
     current_user: User = Depends(get_current_user),
+    x_acting_tenant_id: Optional[str] = Header(default=None),
 ) -> str:
-    """Returns tenant_id string from the authenticated user's token."""
+    """Returns tenant_id string. For superadmin acting as a tenant, uses X-Acting-Tenant-Id header."""
+    if current_user.role == "superadmin" and x_acting_tenant_id:
+        return x_acting_tenant_id
+    if not current_user.tenant_id:
+        raise HTTPException(status_code=400, detail="No tenant associated with this account")
     return str(current_user.tenant_id)
 
 

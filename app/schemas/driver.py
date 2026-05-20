@@ -34,6 +34,8 @@ class DriverResponse(DriverBase):
     tenant_id: UUID
     created_at: datetime
     updated_at: datetime
+    utilization_pct: Optional[float] = None
+    performance_score: Optional[float] = None
 
     class Config:
         from_attributes = True

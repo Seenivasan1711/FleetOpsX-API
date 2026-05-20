@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     TENANT_MODE: str = "multi"              # "multi" | "single" (on-prem/single-tenant)
     DB_ROUTE_REFRESH_INTERVAL: int = 60     # seconds between route cache refreshes
 
+    # MongoDB (Phase 6 — chat history)
+    MONGODB_URL: Optional[str] = None
+    MONGODB_DB: str = "fleetopsx"
+
     # LLM — system-wide defaults (tenants can override via TenantConfig KV store)
     LLM_PROVIDER: str = "gemini"          # gemini | openai | anthropic
     GEMINI_API_KEY: Optional[str] = None

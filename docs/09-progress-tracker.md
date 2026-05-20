@@ -1,150 +1,447 @@
-# FleetOpsX — Phase 5 Progress Tracker
+# FleetOpsX — Progress Tracker
 
-> **This file tracks Phase 5 only.**  
-> For Phase 1–4 history, see `../PROGRESS_TRACKER.md`.
+> **This file tracks Phase 6 (Redesign V2) actively.**  
+> For Phase 1–5 history, see `../PROGRESS_TRACKER.md`.
 
 ---
 
 ## Quick Status
 
 ```
-Last Updated  : 2026-05-09
-Current Phase : Phase 5 — Platform Intelligence & UX
-Current Epic  : P5-E0 — Superadmin Auth + Tenant Management (code complete, pending manual verification)
-Next Action   : Verify P5-E0 manually then start P5-E1 AI Provider Management
+Last Updated  : 2026-05-11
+Current Phase : Phase 6 — UI/UX Redesign V2
+Branch        : redesign/v2-ux (local only — push to GitHub before PR)
+Reference     : claude.ai/design/p/019e0e94
+Status        : Implementation complete — polish + push pending
+Next Action   : push redesign/v2-ux to origin (both repos), then open PR
 Blocker       : None
 ```
 
 ---
 
-## Phase 5 Epic Overview
+## Phase 5 Summary (All Complete ✅)
 
-| Epic | Name | Priority | Status | Est. Effort |
-|------|------|----------|--------|-------------|
-| P5-E0 | Superadmin Auth + Tenant Management | 1 | 🟡 In Progress | 1 day |
-| P5-E1 | AI Provider Management Page | 2 | ⬜ Not Started | 1 day |
-| P5-E2 | AI Planning — Multi-Scenario + Memory | 3 | ⬜ Not Started | 3 days |
-| P5-E3 | Plan History + Feedback Loop | 4 | ⬜ Not Started | 2 days |
-| P5-E4 | Chat UI Redesign (DataGuard-style) | 5 | ⬜ Not Started | 2 days |
-| P5-E5 | Driver Mobile PWA | 6 | ⬜ Not Started | 2 days |
-| P5-E6 | Real-time WebSocket Layer | 7 | ⬜ Not Started | 2 days |
-| P5-E7 | Customer Tracking Portal | 8 | ⬜ Not Started | 1 day |
-| P5-E8 | User Management (Tenant Admin) | 9 | ⬜ Not Started | 2 days |
-
----
-
-## P5-E0: Superadmin Auth + Tenant Management
-
-### Backend
-
-| ID | Story | Status | File |
-|----|-------|--------|------|
-| P5-E0-BE-1 | `GET /admin/tenants` — list all tenants with today's order count | ✅ | `app/api/v1/admin.py` |
-| P5-E0-BE-2 | Update `POST /auth/login` — if superadmin, include tenants[] in response | ✅ | `app/api/v1/auth.py` |
-| P5-E0-BE-3 | `get_effective_tenant_id()` dep — reads X-Acting-Tenant-Id header for superadmin | ✅ | `app/api/deps.py` |
-| P5-E0-BE-4 | Seed superadmin user (`superadmin@fleetopsx.com` / `admin1234`) in seed script | ✅ | `scripts/seed_data.py` |
-| P5-E0-BE-VER | Login as superadmin → tenants list returned; impersonation header accepted | ⬜ | Manual test |
-
-### Frontend
-
-| ID | Story | Status | File |
-|----|-------|--------|------|
-| P5-E0-FE-1 | Update `User` type — add `role: 'superadmin'` + `tenants?` field | ✅ | `src/types/index.ts` |
-| P5-E0-FE-2 | Update `auth.store.ts` — add `effectiveTenantId`, `isReadOnly`, `isSuperadmin` | ✅ | `src/store/auth.store.ts` |
-| P5-E0-FE-3 | Update `client.ts` interceptor — add `X-Acting-Tenant-Id` header when set | ✅ | `src/api/client.ts` |
-| P5-E0-FE-4 | `TenantSelector.tsx` — full-page tenant picker (cards, search, act/read buttons) | ✅ | `src/pages/TenantSelector.tsx` |
-| P5-E0-FE-5 | `SuperadminBanner.tsx` — amber banner: tenant name, mode toggle, exit | ✅ | `src/components/layout/SuperadminBanner.tsx` |
-| P5-E0-FE-6 | `ConfirmActionModal.tsx` — "Are you sure?" for superadmin mutations | ✅ | `src/components/shared/ConfirmActionModal.tsx` |
-| P5-E0-FE-7 | Update `AppRoutes.tsx` — add `/select-tenant` route | ✅ | `src/routes/AppRoutes.tsx` |
-| P5-E0-FE-8 | Update `Login.tsx` — redirect superadmin to `/select-tenant` after login | ✅ | `src/pages/Login.tsx` |
-| P5-E0-FE-9 | Update `AppShell.tsx` — show SuperadminBanner if isSuperadmin + effectiveTenantId | ✅ | `src/components/layout/AppShell.tsx` |
-| P5-E0-FE-VER | Login as superadmin → see tenant list → select → banner shown → exit works | ⬜ | Manual test |
+| Epic | Name | Status |
+|------|------|--------|
+| P5-E0 | Superadmin Auth + Tenant Management | ✅ Done |
+| P5-E1 | AI Provider Management | ✅ Done |
+| P5-E2 | AI Planning — Multi-Scenario + Memory | ✅ Done |
+| P5-E3 | Plan History + Feedback Loop | ✅ Done |
+| P5-E4 | Chat UI Redesign (FAB + slash commands) | ✅ Done |
+| P5-E5 | Driver Mobile PWA | ✅ Done |
+| P5-E6 | Real-time WebSocket Layer | ✅ Done |
+| P5-E7 | Customer Tracking Portal | ✅ Done |
+| P5-E8 | User Management (Tenant Admin) | ✅ Done |
 
 ---
 
-## P5-E1: AI Provider Management
+## Phase 6 — UI/UX Redesign V2
 
-### Backend
+### Task Overview
 
-| ID | Story | Status | File |
-|----|-------|--------|------|
-| P5-E1-BE-1 | `AiProviderConfig` model | ⬜ | `app/models/ai_provider.py` |
-| P5-E1-BE-2 | Alembic migration for `ai_provider_configs` | ⬜ | `alembic/versions/...` |
-| P5-E1-BE-3 | Schemas: `AiProviderIn`, `AiProviderOut`, `AiProviderUpdate` | ⬜ | `app/schemas/ai_provider.py` |
-| P5-E1-BE-4 | `GET/POST/PUT/DELETE /admin/ai-providers` (superadmin) | ⬜ | `app/api/v1/admin.py` |
-| P5-E1-BE-5 | `GET/PATCH /settings/ai-config` (tenant — view platform default + set own) | ⬜ | `app/api/v1/tenants.py` |
-| P5-E1-BE-6 | Update `llm_factory.py` — read from `ai_provider_configs` table instead of env | ⬜ | `app/core/llm_factory.py` |
-
-### Frontend
-
-| ID | Story | Status | File |
-|----|-------|--------|------|
-| P5-E1-FE-1 | `src/api/aiProviders.ts` — CRUD API client | ⬜ | `src/api/aiProviders.ts` |
-| P5-E1-FE-2 | `/admin/ai-providers` page — provider table + add/edit/delete + set default | ⬜ | `src/pages/AiProviders.tsx` |
-| P5-E1-FE-3 | Settings page "AI Model" section — tenant config panel | ⬜ | `src/pages/Settings.tsx` |
-
----
-
-## P5-E2: AI Planning Multi-Scenario
-
-### Backend
-
-| ID | Story | Status | File |
-|----|-------|--------|------|
-| P5-E2-BE-1 | `POST /plan/ai-scenarios` endpoint — Celery task, returns task_id | ⬜ | `app/api/v1/planning.py` |
-| P5-E2-BE-2 | `AIPlannerService` — runs OR-Tools baseline + LLM scenario generation | ⬜ | `app/services/ai_planner_service.py` |
-| P5-E2-BE-3 | `ai_scenario_task` Celery task | ⬜ | `app/workers/tasks.py` |
-| P5-E2-BE-4 | NL constraint parser — inject into scenario generation | ⬜ | `app/planners/constraint_parser.py` |
-| P5-E2-BE-5 | `POST /plan/confirm-scenario` — commits chosen scenario to route_plans | ⬜ | `app/api/v1/planning.py` |
-| P5-E2-BE-6 | Plan memory reader — fetch last 5 same-weekday plans as LLM context | ⬜ | `app/services/plan_memory_service.py` |
-| P5-E2-BE-7 | Email notification on plan completion (Resend/SendGrid) | ⬜ | `app/core/notifications.py` |
-
-### Frontend
-
-| ID | Story | Status | File |
-|----|-------|--------|------|
-| P5-E2-FE-1 | Planning page — "AI Plan" button → NL constraint input → loading state | ⬜ | `src/pages/Planning.tsx` |
-| P5-E2-FE-2 | Scenario card comparison component (4 cards, KPIs, select) | ⬜ | `src/components/planning/ScenarioCards.tsx` |
-| P5-E2-FE-3 | Plan polling hook — polls task status every 3s until done | ⬜ | `src/hooks/usePlanPolling.ts` |
+| # | Task | Category | Status | Commit |
+|---|------|----------|--------|--------|
+| #5  | Design tokens, color palette, typography | Foundation | ✅ Done | `cf793c9` (UI) |
+| #6  | Sidebar — OPERATIONS/INSIGHTS + Fleet & Platform collapsible | Shell | ✅ Done | `cf793c9` (UI) |
+| #7  | Topbar — global search + Ask AI CTA | Shell | ✅ Done | `cf793c9` (UI) |
+| #8  | Dashboard — KPI cards with sparklines | Dashboard | ✅ Done | `29b9dc9` (UI) |
+| #9  | Dashboard — Live Ops ticker banner | Dashboard | ✅ Done | `29b9dc9` (UI) |
+| #10 | Dashboard — Route Timeline Gantt | Dashboard | ✅ Done | `29b9dc9` (UI) |
+| #11 | Dashboard — At-Risk Inbox + AI action chips | Dashboard | ✅ Done | `6a68d7b` (UI) |
+| #12 | Dashboard — Fleet availability 3 cards | Dashboard | ✅ Done | `29b9dc9` (UI) |
+| #13 | Dashboard — Quick Actions redesign (icon+title+subtitle) | Dashboard | ✅ Done | `29b9dc9` (UI) |
+| #14 | Orders — tab filters + VALUE/PRIORITY/WINDOW columns | Pages | ✅ Done | `cf793c9` (UI) |
+| #15 | AI Planning — scenario comparison + plan detail | Pages | ✅ Done | `cf793c9` (UI) |
+| #16 | Live Map — driver feed panel + optimize button | Pages | ✅ Done | `1b2902e` (UI) |
+| #17 | Plan History — clean card list with inline stats | Pages | ✅ Done | pre-existing |
+| #18 | Drivers — avatars, score bars, status pills, utilization | Pages | ✅ Done | `cf793c9` (UI) |
+| #19 | Analytics — sparkline KPI cards + utilization bars | Pages | ✅ Done | `72b1538` (UI) |
+| #20 | Settings — color mode picker + alert toggles | Pages | ✅ Done | pre-existing |
+| #21 | Ask AI drawer — wired to conversations API (MongoDB-aware) | Chat/AI | ✅ Done | `29b9dc9` (UI) |
+| #22 | ⌘K global command palette | Shell | ✅ Done | `cf793c9` (UI) |
+| #23 | BE audit — document existing Order/Driver fields | Backend | ✅ Done | `bdcde15` (API) |
+| #24 | Animations & micro-interactions | Polish | 🟡 Partial | CSS done; number counters exist |
+| #25 | Light mode audit | Polish | 🟡 Pending visual review | no code gaps |
+| #26 | Git — push branches + PR | Close | ⬜ Manual step | push to origin |
+| #27 | BE — Order: add value field + migration | Backend | ✅ Done | `bdcde15` (API) |
+| #28 | BE — Driver: utilization_pct, performance_score | Backend | ✅ Done | `bdcde15` (API) |
+| #29 | BE — Daily KPI trend endpoint | Backend | ✅ Done | `bdcde15` (API) |
+| #30 | BE — Route timeline endpoint for Gantt | Backend | ✅ Done | `bdcde15` (API) |
+| #31 | BE — MongoDB chat history CRUD | Backend | ✅ Done | `bdcde15` + `359c6b3` (API) |
+| #32 | BE — Multi-turn AI context (history sent to LLM) | Backend | ✅ Done | `359c6b3` (API) |
+| #33 | FE — Wire chat to MongoDB conversations API | Chat/AI | ✅ Done | `29b9dc9` (UI) |
 
 ---
 
-## P5-E3: Plan History + Feedback
+### #5 — Foundation: Design Tokens & Typography
 
-| ID | Story | Status | File |
-|----|-------|--------|------|
-| P5-E3-BE-1 | `plan_history` Postgres table + model | ⬜ | `app/models/plan_history.py` |
-| P5-E3-BE-2 | `plan_notes` table + model | ⬜ | `app/models/plan_notes.py` |
-| P5-E3-BE-3 | `GET /plan/history` + `GET /plan/history/{id}` + `POST /plan/history/{id}/notes` | ⬜ | `app/api/v1/planning.py` |
-| P5-E3-FE-1 | "Plan History" tab in Planning page | ⬜ | `src/pages/Planning.tsx` |
-| P5-E3-FE-2 | History list + detail view + notes panel | ⬜ | `src/components/planning/PlanHistory.tsx` |
-| P5-E3-MON-1 | MongoDB Atlas free cluster provisioned | ⬜ | Atlas dashboard |
-| P5-E3-MON-2 | `app/core/mongo.py` — Motor async client | ⬜ | `app/core/mongo.py` |
-| P5-E3-MON-3 | Migrate plan_history to MongoDB collections | ⬜ | `app/services/plan_session_service.py` |
+**Goal:** Establish the new visual system as CSS variables in `globals.css`.
 
----
-
-## P5-E4: Chat UI Redesign
-
-| ID | Story | Status | File |
-|----|-------|--------|------|
-| P5-E4-FE-1 | Floating chat button (bottom-right, purple, 56px) | ⬜ | `src/components/chat/ChatButton.tsx` |
-| P5-E4-FE-2 | Chat slide-over panel (420px, full-height, dark) | ⬜ | `src/components/chat/ChatPanel.tsx` |
-| P5-E4-FE-3 | Full-page chat modal (expand button) | ⬜ | `src/components/chat/ChatFullPage.tsx` |
-| P5-E4-FE-4 | Entry state: greeting + contextual suggestions | ⬜ | `src/components/chat/ChatEntryState.tsx` |
-| P5-E4-FE-5 | Slash command autocomplete dropdown | ⬜ | `src/components/chat/SlashMenu.tsx` |
-| P5-E4-FE-6 | Thinking state component (steps + streaming indicator) | ⬜ | `src/components/chat/ThinkingState.tsx` |
-| P5-E4-FE-7 | Response card renderer (typed cards: summary, table, plan, at_risk) | ⬜ | `src/components/chat/ResponseCard.tsx` |
-| P5-E4-FE-8 | Follow-up chips component | ⬜ | `src/components/chat/FollowUpChips.tsx` |
-| P5-E4-FE-9 | Context footer component | ⬜ | `src/components/chat/ContextFooter.tsx` |
-| P5-E4-BE-1 | Update chat endpoint — return structured JSON response cards | ⬜ | `app/api/v1/chat.py` |
-| P5-E4-BE-2 | Slash command router (backend intent detection) | ⬜ | `app/services/chat_service.py` |
-| P5-E4-BE-3 | Updated system prompt with product rules | ⬜ | `app/services/chat_context_service.py` |
-| P5-E4-GCS-1 | Update globals.css — Obsidian theme (#0a0a0a bg, #7c3aed accent) | ⬜ | `src/styles/globals.css` |
+| Story | Status | Notes |
+|-------|--------|-------|
+| New semantic color tokens (--c-bg, --c-surface, --c-elevated, --c-accent, --c-muted) | ⬜ | Already partially done — audit and extend |
+| Typography scale (--text-xs through --text-2xl + --font-mono) | ⬜ | |
+| Spacing scale and border-radius tokens | ⬜ | |
+| Dark + light theme variants for all tokens | ⬜ | |
+| page-slide-in animation + hover-lift keyframes | ⬜ | |
 
 ---
 
-## P5-E5 through P5-E8 (Planned, not started)
+### #6 — Sidebar Redesign
 
-These epics are planned in the PRD (`docs/01-PRD.md`) and architecture (`docs/03-architecture.md`).  
-Story-level tracker will be added here when each epic starts.
+**Goal:** Restructure nav into OPERATIONS / INSIGHTS / "Fleet & Platform" collapsible sections.
+
+**OPERATIONS items:** Dashboard, Orders, Planning, Live Map, Plan History, Drivers  
+**INSIGHTS items:** Analytics, Settings  
+**Fleet & Platform (collapsible):** Vehicles, Depots, Integrations, Marketplace, Governance, Scenarios, AI Providers, Team
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| Section labels with uppercase tracking | ⬜ | |
+| "Fleet & Platform" collapsible with ChevronDown/Up | ⬜ | |
+| User profile footer (avatar initials, name, email, role pill) | ⬜ | |
+| Active state highlight: left 2px accent bar | ⬜ | |
+| Collapsed sidebar (icon-only mode) support | ⬜ | |
+
+---
+
+### #7 — Topbar Redesign
+
+**Goal:** Add global search to topbar; "Ask AI" becomes the sole AI entry point.
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| Global search input (⌘K trigger) in center topbar | ⬜ | |
+| "Ask AI" button — opens slide-over drawer (replaces FAB) | ⬜ | |
+| Notification bell with badge count | ⬜ | |
+| Page title + breadcrumb left side | ⬜ | |
+
+---
+
+### #8 — Dashboard: KPI Cards with Sparklines
+
+**Goal:** Replace static stat boxes with animated KPI cards showing 7-day trend lines.
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| KPI card component: value, label, delta %, sparkline | ⬜ | Needs #29 BE endpoint |
+| 4 cards: Orders Today, On-Time %, Active Drivers, Fleet Efficiency | ⬜ | |
+| Recharts LineChart (thin, no axes, just the curve) | ⬜ | |
+| Delta badge: green ↑ / red ↓ | ⬜ | |
+
+---
+
+### #9 — Dashboard: Live Ops Ticker
+
+**Goal:** Scrolling horizontal alert strip below the KPI cards.
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| CSS marquee / JS scroll ticker | ⬜ | |
+| Events: delayed orders, driver alerts, at-risk stops | ⬜ | |
+| Click-to-dismiss per event | ⬜ | |
+
+---
+
+### #10 — Dashboard: Route Timeline Gantt
+
+**Goal:** Horizontal Gantt showing each driver's stop schedule for today.
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| Recharts Gantt or custom SVG rows | ⬜ | Needs #30 BE endpoint |
+| Driver row: colored blocks per stop, hover = stop detail | ⬜ | |
+| Current time indicator line | ⬜ | |
+| Click stop → Opens order detail | ⬜ | |
+
+---
+
+### #11 — Dashboard: At-Risk Inbox
+
+**Goal:** Right-panel list of orders at risk of missing SLA with AI action chips.
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| At-Risk card: order ref, driver, ETA, risk reason | ⬜ | |
+| AI action chips: "Reassign", "Notify customer", "Extend window" | ⬜ | |
+| Click action → fires AI chat with pre-filled prompt | ⬜ | |
+
+---
+
+### #12 — Dashboard: Fleet Availability Cards
+
+**Goal:** Replace single "Fleet Overview" table with 3 stat cards.
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| Drivers: Active / Total with donut ring | ⬜ | |
+| Vehicles: Available / Total | ⬜ | |
+| Efficiency: composite score with bar | ⬜ | |
+
+---
+
+### #13 — Dashboard: Quick Actions Redesign
+
+**Goal:** Grid of 4-6 large action cards (icon + title + subtitle).
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| Card grid layout (2 or 3 cols) | ⬜ | |
+| Actions: New Order, Plan Today, Assign Driver, View Map, Run Scenarios | ⬜ | |
+| Hover lift animation | ⬜ | |
+
+---
+
+### #14 — Orders Page Redesign
+
+**Goal:** Tab-based filter bar + new VALUE, PRIORITY, WINDOW columns.
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| Tab strip: All / Pending / In-Transit / Delivered / Failed | ⬜ | |
+| VALUE column (currency display) | ⬜ | Needs #27 |
+| PRIORITY column with colored badges | ⬜ | Needs #27 |
+| TIME WINDOW column | ⬜ | Needs #27 |
+| Bulk select + bulk actions (assign, cancel) | ⬜ | |
+
+---
+
+### #15 — AI Planning Redesign
+
+**Goal:** Cleaner scenario selection UX with comparison cards and plan detail table.
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| 4 scenario cards with: name, icon, KPI grid, select button | ⬜ | |
+| Selected card: accent border + shadow | ⬜ | |
+| Plan detail table: driver, stops, distance, ETA | ⬜ | |
+| AI confidence badge per scenario | ⬜ | |
+
+---
+
+### #16 — Live Map Redesign
+
+**Goal:** Driver feed side panel + one-click live route optimization.
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| Right panel: driver list with live GPS ping time | ⬜ | |
+| Driver status pills: Active / Idle / Off-route | ⬜ | |
+| "Optimize Live" button → triggers immediate re-plan | ⬜ | |
+| Map clustering for dense stop areas | ⬜ | |
+
+---
+
+### #17 — Plan History Redesign
+
+**Goal:** Clean timeline of past plans with inline KPI stats.
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| Card list: date, scenario used, # orders, on-time %, star rating | ⬜ | |
+| Click card → detail view with route table | ⬜ | |
+| Notes indicator badge | ⬜ | |
+
+---
+
+### #18 — Drivers Page Redesign
+
+**Goal:** Rich driver cards with avatars, performance scores, utilization bars.
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| Avatar circle: initials with color derived from name | ⬜ | |
+| Performance score bar (0–100) | ⬜ | Needs #28 |
+| Utilization bar: today's hours vs capacity | ⬜ | Needs #28 |
+| Status pill: Active / Off-duty / On-leave | ⬜ | |
+
+---
+
+### #19 — Analytics Redesign
+
+**Goal:** Replace plain charts with sparkline KPI cards and horizontal utilization bars.
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| 4 top KPI cards with 7-day sparklines | ⬜ | |
+| Driver utilization horizontal bar chart | ⬜ | |
+| On-time % trend line | ⬜ | |
+| Route efficiency heatmap by day of week | ⬜ | |
+
+---
+
+### #20 — Settings Redesign
+
+**Goal:** Visual color mode picker + structured alert preference toggles.
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| Color mode: System / Light / Dark picker with preview swatches | ⬜ | |
+| Alert toggles: SLA breach, driver offline, plan complete | ⬜ | |
+| Save confirmation toast | ⬜ | |
+
+---
+
+### #21 — Ask AI Drawer Panel
+
+**Goal:** Remove floating FAB + /chat page. "Ask AI" topbar button opens slide-over drawer.
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| Slide-over drawer (right side, 420px) with conversation list | ⬜ | |
+| New Conversation button | ⬜ | |
+| Conversation history from MongoDB (grouped: Today / Yesterday / Past 7 days) | ⬜ | |
+| Message bubbles: user right, AI left with card renderer | ⬜ | |
+| Slash command autocomplete | ⬜ | |
+| Remove FAB from AppShell | ⬜ | |
+| Remove /chat route from AppRoutes | ⬜ | |
+| Remove "Chat AI" from sidebar nav | ⬜ | |
+
+---
+
+### #22 — ⌘K Command Palette
+
+**Goal:** Global search across orders, drivers, and pages — no extra API calls.
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| ⌘K / Ctrl+K keyboard listener | ⬜ | |
+| Modal overlay with search input | ⬜ | |
+| Results: pages (static), orders (React Query cache), drivers (React Query cache) | ⬜ | |
+| Keyboard navigation (↑↓ + Enter) | ⬜ | |
+| Recent items section when input is empty | ⬜ | |
+
+---
+
+### #23 — Backend Audit: Order/Driver Fields
+
+**Goal:** Document all existing Order and Driver API response fields before extending.
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| List all Order model fields (Postgres + schema) | ⬜ | |
+| List all Driver model fields (Postgres + schema) | ⬜ | |
+| Identify gaps vs redesign requirements | ⬜ | |
+| Document findings — unblock #27 and #28 | ⬜ | |
+
+---
+
+### #24 — Animations & Micro-interactions
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| page-slide-in on all pages (already present — audit) | ⬜ | |
+| Hover lift on cards | ⬜ | |
+| Number counter animation on KPI cards | ⬜ | |
+| Skeleton loaders on all async sections | ⬜ | |
+| Toast enter/exit transitions | ⬜ | |
+
+---
+
+### #25 — Light Mode Audit
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| All new components render correctly in light theme | ⬜ | |
+| ChatPanel hardcoded dark values replaced with CSS vars | ⬜ | |
+| Contrast ratios pass WCAG AA | ⬜ | |
+
+---
+
+### #26 — Git Commits + PR
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| Structured commits: one per module/task | ⬜ | |
+| PR on redesign/v2-ux → main with full description | ⬜ | |
+
+---
+
+### #27 — BE: Order Fields
+
+**Goal:** Add `priority`, `value`, `time_window_start`, `time_window_end` to Order model.
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| Alembic migration — new columns | ⬜ | Blocked by #23 |
+| Update OrderIn / OrderOut schemas | ⬜ | |
+| Update `GET /orders` response | ⬜ | |
+| Update `POST /orders` + `PUT /orders/{id}` | ⬜ | |
+
+---
+
+### #28 — BE: Driver Fields
+
+**Goal:** Add `utilization_pct` and `performance_score` to Driver response.
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| Compute utilization_pct from today's route assignments | ⬜ | Blocked by #23 |
+| Compute performance_score from historical on-time % | ⬜ | |
+| Return in DriverOut schema | ⬜ | |
+
+---
+
+### #29 — BE: KPI Trend Endpoint
+
+**Goal:** `GET /analytics/kpi-trend?days=7` — returns time-series for dashboard sparklines.
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| Endpoint returning daily: orders_count, on_time_pct, active_drivers, fleet_efficiency | ⬜ | |
+| Cached (Redis, TTL 1h) | ⬜ | |
+
+---
+
+### #30 — BE: Route Timeline Endpoint
+
+**Goal:** `GET /plan/timeline?date=YYYY-MM-DD` — Gantt data per driver.
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| Returns: [{driver_id, driver_name, stops: [{order_id, address, start_time, end_time, status}]}] | ⬜ | |
+| Derived from existing route_plans + route_stops | ⬜ | |
+
+---
+
+### #31 — BE: MongoDB Chat History
+
+**Goal:** Motor async client + ChatConversation / ChatMessage collections + CRUD API.
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| `app/core/mongo.py` — Motor client setup | ⬜ | |
+| ChatConversation collection: {_id, tenant_id, user_id, title, created_at, updated_at} | ⬜ | |
+| ChatMessage collection: {_id, conversation_id, role, content, card_data, created_at} | ⬜ | |
+| `GET /chat/conversations` — list user's conversations | ⬜ | |
+| `POST /chat/conversations` — create new conversation | ⬜ | |
+| `GET /chat/conversations/{id}/messages` — fetch messages | ⬜ | |
+| `POST /chat/conversations/{id}/messages` — send message + AI reply | ⬜ | |
+| `DELETE /chat/conversations/{id}` — delete conversation | ⬜ | |
+
+---
+
+### #32 — BE: Multi-turn AI Context
+
+**Goal:** Send last N conversation messages to LLM for context-aware replies.
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| Fetch last 10 messages from MongoDB on each request | ⬜ | Blocked by #31 |
+| Format as [{role, content}] array for LLM messages param | ⬜ | |
+| Inject fleet context in system message | ⬜ | |
+
+---
+
+### #33 — FE: Wire Chat to MongoDB API
+
+**Goal:** Replace localStorage chat persistence with MongoDB-backed API.
+
+| Story | Status | Notes |
+|-------|--------|-------|
+| `src/api/chat.ts` — conversations CRUD API client | ⬜ | Blocked by #31, #32, #21 |
+| Ask AI drawer loads conversation list from API | ⬜ | |
+| New conversation: POST to API, use returned ID | ⬜ | |
+| Messages: stream from API, auto-save | ⬜ | |
+| Delete conversation from API | ⬜ | |
+| Remove localStorage fallback | ⬜ | |
