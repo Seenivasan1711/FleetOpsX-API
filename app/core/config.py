@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     JWT_EXPIRE_MINUTES: int = 1440
 
     # Planner (used in P1-E4)
-    PLANNER_TYPE: str = "rule_based"
+    PLANNER_TYPE: str = "langgraph"
 
     # Multi-tenant DB routing (P4-E1)
     TENANT_MODE: str = "multi"              # "multi" | "single" (on-prem/single-tenant)

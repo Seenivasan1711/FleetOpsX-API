@@ -234,21 +234,43 @@ def scenario_run_task(self, run_id: str, tenant_id: str) -> dict:
 
 @celery_app.task(name="ai_scenario_task", bind=True, max_retries=0)
 def ai_scenario_task(self, tenant_id: str, plan_date_str: str, nl_constraints: str | None = None) -> dict:
-    """Generate 4 AI planning scenarios for the given date and tenant."""
+    """Generate plan options using OR-Tools + LLM enrichment (grounded, not hallucinated)."""
     from datetime import date as _date
     from app.core.db import SessionLocal
-    from app.services.ai_planner_service import generate_ai_scenarios
+    from app.services.plan_options_service import generate_options
 
     db = SessionLocal()
     try:
         plan_date = _date.fromisoformat(plan_date_str)
-        result = generate_ai_scenarios(
-            db=db,
-            tenant_id=tenant_id,
-            plan_date=plan_date,
-            nl_constraints=nl_constraints or None,
-        )
-        return {"status": "done", "result": result}
+        response = generate_options(db=db, tenant_id=tenant_id, plan_date=plan_date)
+        # Shape result to match legacy polling contract so existing FE polling still works
+        scenarios = [
+            {
+                "type": opt.mode,
+                "kpis": {
+                    "total_distance_km": opt.total_distance_km,
+                    "est_duration_min": opt.est_duration_min,
+                    "est_fuel_cost": opt.est_fuel_cost,
+                    "orders_covered": opt.orders_covered,
+                    "total_orders": opt.total_orders,
+                    "total_routes": opt.total_routes,
+                },
+                "plan_id": opt.plan_id,
+                "ai_summary": opt.ai_summary,
+                "confidence_score": opt.confidence_score,
+                "reasoning_steps": opt.reasoning_steps,
+                "warnings": opt.warnings,
+            }
+            for opt in response.options
+        ]
+        return {
+            "status": "done",
+            "result": {
+                "scenarios": scenarios,
+                "recommendation": response.recommendation,
+                "naive_distance_km": response.naive_distance_km,
+            },
+        }
     except Exception as exc:
         logger.error("ai_scenario_task error: %s", exc, exc_info=True)
         return {"status": "failed", "error": str(exc)}

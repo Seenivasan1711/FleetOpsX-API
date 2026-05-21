@@ -47,12 +47,11 @@ def plan_options(
     Each variant is saved as a DRAFT plan. Call POST /plan/confirm to activate one.
     Order assignments are NOT applied until confirm is called.
     """
-    summaries = plan_options_service.generate_options(
+    return plan_options_service.generate_options(
         db=db,
         tenant_id=str(current_user.tenant_id),
         plan_date=plan_date,
     )
-    return PlanOptionsResponse(plan_date=plan_date, options=summaries)
 
 
 @router.post("/confirm")
@@ -92,11 +91,9 @@ def replan(
     """
     from app.models.order import Order
     from app.models.route_plan import Route, RouteStop
-    from app.planners.ortools_planner import ORToolsPlanner
 
     tid = current_user.tenant_id
 
-    # Find route_stop rows that are still PENDING for this tenant
     stmt = (
         select(RouteStop)
         .join(Route, RouteStop.route_id == Route.id)
@@ -119,7 +116,8 @@ def replan(
         )
         db.commit()
 
-    result = ORToolsPlanner().plan_day(db=db, tenant_id=str(tid), plan_date=plan_date)
+    service = PlanningService()
+    result = service.plan_day(db=db, tenant_id=str(tid), plan_date=plan_date)
     result["replan"] = True
     return result
 

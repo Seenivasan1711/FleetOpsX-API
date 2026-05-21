@@ -29,6 +29,8 @@ logger = logging.getLogger(__name__)
 
 AVG_SPEED_KMH = 30
 WARN_BEFORE_MINUTES = 30
+REPLAN_OVERDUE_MINUTES = 45   # single stop this overdue → trigger replan
+REPLAN_AT_RISK_COUNT = 2      # this many at-risk stops for one driver → trigger replan
 _ACTIVE_STATUSES = {"PENDING", "IN_TRANSIT"}
 
 
@@ -73,8 +75,39 @@ def run_monitor_scan(db: Session, tenant_id: str, plan_date: date) -> int:
         )
     ).all()
 
+    # Load existing PENDING suggestions once to avoid repeated queries
+    existing_sla = db.execute(
+        select(AgentSuggestion).where(
+            AgentSuggestion.tenant_id == tid,
+            AgentSuggestion.status == "PENDING",
+            AgentSuggestion.suggestion_type == "EARLY_SLA_WARNING",
+            AgentSuggestion.plan_date == plan_date,
+        )
+    ).scalars().all()
+    existing_sla_stop_ids = {
+        str(s.context.get("stop_id"))
+        for s in existing_sla
+        if s.context and s.context.get("stop_id")
+    }
+
+    existing_replan = db.execute(
+        select(AgentSuggestion).where(
+            AgentSuggestion.tenant_id == tid,
+            AgentSuggestion.status == "PENDING",
+            AgentSuggestion.suggestion_type == "REPLAN_DRIVER",
+            AgentSuggestion.plan_date == plan_date,
+        )
+    ).scalars().all()
+    existing_replan_driver_ids = {
+        str(s.context.get("driver_id"))
+        for s in existing_replan
+        if s.context and s.context.get("driver_id")
+    }
+
+    # Per-driver: collect at-risk stop info for REPLAN_DRIVER threshold check
+    driver_risks: dict[str, dict] = {}  # driver_id → {driver, stops: [...], max_overdue}
+
     for stop, route, order, driver in rows:
-        # Get driver's last GPS ping from Redis
         raw = redis.get(f"driver:{driver.id}:location")
         if raw is None:
             continue
@@ -96,53 +129,75 @@ def run_monitor_scan(db: Session, tenant_id: str, plan_date: date) -> int:
         tw_end = order.time_window_end
         tw_end_minutes = tw_end.hour * 60 + tw_end.minute
 
-        # Fire warning if ETA > window_end - WARN_BEFORE_MINUTES
         if eta_minutes <= tw_end_minutes - WARN_BEFORE_MINUTES:
-            continue
-
-        # Check if a PENDING suggestion already exists for this stop
-        existing = db.execute(
-            select(AgentSuggestion).where(
-                AgentSuggestion.tenant_id == tid,
-                AgentSuggestion.status == "PENDING",
-                AgentSuggestion.suggestion_type == "EARLY_SLA_WARNING",
-                AgentSuggestion.plan_date == plan_date,
-            )
-        ).scalars().all()
-
-        existing_stop_ids = {
-            str(s.context.get("stop_id"))
-            for s in existing
-            if s.context and s.context.get("stop_id")
-        }
-        if str(stop.id) in existing_stop_ids:
             continue
 
         overdue_by = round(eta_minutes - tw_end_minutes)
         expires_at = now + timedelta(minutes=30)
 
-        suggestion = AgentSuggestion(
+        # EARLY_SLA_WARNING — one per stop
+        if str(stop.id) not in existing_sla_stop_ids:
+            db.add(AgentSuggestion(
+                tenant_id=tid,
+                plan_date=plan_date,
+                suggestion_type="EARLY_SLA_WARNING",
+                status="PENDING",
+                priority="HIGH" if overdue_by > 15 else "NORMAL",
+                title=f"{driver.full_name} may miss delivery by {str(tw_end)[:5]}",
+                detail=(
+                    f"Driver is ~{round(travel_min)} min from the stop. "
+                    f"Time window closes at {str(tw_end)[:5]}. "
+                    f"Estimated arrival is {round(overdue_by)} min late."
+                ),
+                context={
+                    "driver_id": str(driver.id),
+                    "stop_id": str(stop.id),
+                    "order_id": str(order.id),
+                    "eta_minutes": round(eta_minutes),
+                    "tw_end_minutes": tw_end_minutes,
+                },
+                expires_at=expires_at,
+            ))
+            created += 1
+
+        # Accumulate per-driver risk for REPLAN_DRIVER evaluation
+        drv_key = str(driver.id)
+        if drv_key not in driver_risks:
+            driver_risks[drv_key] = {"driver": driver, "stops": [], "max_overdue": 0}
+        driver_risks[drv_key]["stops"].append(str(stop.id))
+        driver_risks[drv_key]["max_overdue"] = max(driver_risks[drv_key]["max_overdue"], overdue_by)
+
+    # REPLAN_DRIVER — one per driver when 2+ at-risk stops OR any stop overdue > 45 min
+    for drv_key, info in driver_risks.items():
+        if drv_key in existing_replan_driver_ids:
+            continue
+        at_risk_count = len(info["stops"])
+        max_overdue = info["max_overdue"]
+        if at_risk_count < REPLAN_AT_RISK_COUNT and max_overdue < REPLAN_OVERDUE_MINUTES:
+            continue
+        driver = info["driver"]
+        reason = (
+            f"{at_risk_count} stops at risk" if at_risk_count >= REPLAN_AT_RISK_COUNT
+            else f"stop overdue by {max_overdue} min"
+        )
+        db.add(AgentSuggestion(
             tenant_id=tid,
             plan_date=plan_date,
-            suggestion_type="EARLY_SLA_WARNING",
+            suggestion_type="REPLAN_DRIVER",
             status="PENDING",
-            priority="HIGH" if overdue_by > 15 else "NORMAL",
-            title=f"{driver.full_name} may miss delivery by {str(tw_end)[:5]}",
+            priority="CRITICAL",
+            title=f"Replan recommended for {driver.full_name}",
             detail=(
-                f"Driver is ~{round(travel_min)} min from the stop. "
-                f"Time window closes at {str(tw_end)[:5]}. "
-                f"Estimated arrival is {round(overdue_by)} min late."
+                f"Driver has {at_risk_count} at-risk stop(s) with max overdue of "
+                f"{max_overdue} min ({reason}). Consider reassigning remaining stops."
             ),
             context={
-                "driver_id": str(driver.id),
-                "stop_id": str(stop.id),
-                "order_id": str(order.id),
-                "eta_minutes": round(eta_minutes),
-                "tw_end_minutes": tw_end_minutes,
+                "driver_id": drv_key,
+                "at_risk_stops": info["stops"],
+                "max_overdue_min": max_overdue,
             },
-            expires_at=expires_at,
-        )
-        db.add(suggestion)
+            expires_at=now + timedelta(minutes=60),
+        ))
         created += 1
 
     if created:
