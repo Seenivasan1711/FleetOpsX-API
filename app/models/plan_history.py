@@ -20,6 +20,10 @@ class PlanHistory(TenantMixin, Base):
     est_fuel_cost_inr = Column(Float, nullable=True)
     total_time_min = Column(Integer, nullable=True)
     ai_confidence  = Column(Float, nullable=True)
+    # AI-1 E2: savings columns surfaced in Plan History
+    total_distance_km = Column(Float, nullable=True)
+    km_saved          = Column(Float, nullable=True)
+    hrs_saved         = Column(Float, nullable=True)
     created_by     = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at     = Column(DateTime(timezone=True), server_default=func.now())
 

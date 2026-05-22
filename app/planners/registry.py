@@ -15,6 +15,7 @@ from app.planners.agents.driver_collector import DriverCollectorAgent
 from app.planners.agents.vehicle_collector import VehicleCollectorAgent
 from app.planners.agents.forecast_agent import ForecastAgent
 from app.planners.agents.ortools_optimizer import ORToolsOptimizerAgent
+from app.planners.agents.baseline_computer import BaselineComputerAgent
 from app.planners.agents.explain_agent import ExplainAgent
 from app.planners.agents.risk_scorer import RiskScorerAgent
 
@@ -32,7 +33,7 @@ PHASE_1_AGENTS = [
 PHASE_2_AGENTS = [
     # E4: ConstraintValidatorAgent() — validates instructions against plan context
     ORToolsOptimizerAgent(),
-    # E2: BaselineComputerAgent() — add after ORToolsOptimizerAgent
+    BaselineComputerAgent(),   # runs after ORToolsOptimizer, needs plan_result + ctx["orders"]
 ]
 
 # ─── Phase 3 — all run (conceptually) in parallel ─────────────────────────────

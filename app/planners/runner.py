@@ -88,6 +88,7 @@ def run_planning(
 
     # ── Aggregator ─────────────────────────────────────────────────────────────
     result = _aggregate(ctx, run_id)
+    _persist_savings(ctx, db)
     _persist_agent_logs(ctx, db)
     logger.info(
         "runner[%s] complete — %d/%d orders, confidence=%.2f",
@@ -173,10 +174,10 @@ def _aggregate(ctx: AgentContext, run_id: str) -> dict[str, Any]:
         "confidence_score": ctx.get("confidence_score", None),
         "reasoning_steps": ctx.get("reasoning_steps", []),
         "warnings": all_warnings,
-        # ── E2 additions (km_saved populated once BaselineComputerAgent added)
-        "km_saved": None,
-        "hrs_saved": None,
-        "baseline_km": None,
+        # ── E2: savings vs naive baseline ────────────────────────────────────
+        "km_saved": ctx["baseline_result"].get("km_saved"),
+        "hrs_saved": ctx["baseline_result"].get("hrs_saved"),
+        "baseline_km": ctx["baseline_result"].get("baseline_km"),
         # ── Metadata ────────────────────────────────────────────────────────
         "planner": "ai1_runner",
         "run_id": run_id,
@@ -217,6 +218,37 @@ def _preview(output: dict) -> str:
         elif isinstance(v, str) and len(v) < 60:
             parts.append(f"{k}={v!r}")
     return ", ".join(parts)
+
+
+# ─── Savings persistence (E2) ─────────────────────────────────────────────────
+
+def _persist_savings(ctx: AgentContext, db: Session) -> None:
+    """Write baseline_km, km_saved, hrs_saved back to the RoutePlan row."""
+    try:
+        baseline = ctx.get("baseline_result", {})
+        if not baseline or baseline.get("km_saved") is None:
+            return
+        plan_id_str = ctx["plan_result"].get("plan_id")
+        if not plan_id_str:
+            return
+
+        from uuid import UUID
+        from sqlalchemy import update as sa_update
+        from app.models.route_plan import RoutePlan
+
+        db.execute(
+            sa_update(RoutePlan)
+            .where(RoutePlan.id == UUID(plan_id_str))
+            .values(
+                baseline_km=baseline.get("baseline_km"),
+                baseline_hrs=baseline.get("baseline_hrs"),
+                km_saved=baseline.get("km_saved"),
+                hrs_saved=baseline.get("hrs_saved"),
+            )
+        )
+        db.commit()
+    except Exception as exc:
+        logger.warning("runner: failed to persist savings: %s", exc)
 
 
 # ─── AgentLog persistence ──────────────────────────────────────────────────────

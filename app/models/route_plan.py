@@ -16,6 +16,11 @@ class RoutePlan(Base, TimestampMixin, TenantMixin):
     assigned_orders = Column(Integer, default=0)
     total_routes = Column(Integer, default=0)
     planner_version = Column(String(50), nullable=True, default="rule_based_v1")
+    # AI-1 E2: savings vs naive baseline
+    baseline_km  = Column(Float, nullable=True)
+    baseline_hrs = Column(Float, nullable=True)
+    km_saved     = Column(Float, nullable=True)
+    hrs_saved    = Column(Float, nullable=True)
 
     routes = relationship("Route", back_populates="plan", cascade="all, delete-orphan")
 

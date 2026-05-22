@@ -32,6 +32,10 @@ class PlanHistoryIn(BaseModel):
     est_fuel_cost_inr: Optional[float] = None
     total_time_min:   Optional[int] = None
     ai_confidence:    Optional[float] = None
+    # AI-1 E2: savings fields
+    total_distance_km: Optional[float] = None
+    km_saved:          Optional[float] = None
+    hrs_saved:         Optional[float] = None
 
 
 class PlanHistoryOut(BaseModel):
@@ -45,6 +49,10 @@ class PlanHistoryOut(BaseModel):
     est_fuel_cost_inr: Optional[float]
     total_time_min:   Optional[int]
     ai_confidence:    Optional[float]
+    # AI-1 E2: savings fields
+    total_distance_km: Optional[float] = None
+    km_saved:          Optional[float] = None
+    hrs_saved:         Optional[float] = None
     created_by:       Optional[UUID]
     created_at:       datetime
     notes:            List[PlanNoteOut] = []
