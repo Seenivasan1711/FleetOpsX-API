@@ -47,6 +47,12 @@ class AgentState(TypedDict):
 class LangGraphPlanner(PlannerInterface):
 
     def plan_day(self, db: Session, tenant_id: str, plan_date: date) -> dict[str, Any]:
+        # Delegate to the unified AI-1 runner (E1). The old graph is kept below
+        # for reference but is no longer invoked via this path.
+        from app.planners.runner import run_planning
+        return run_planning(db=db, tenant_id=tenant_id, plan_date=plan_date)
+
+    def _plan_day_legacy(self, db: Session, tenant_id: str, plan_date: date) -> dict[str, Any]:
         # Attempt to get LLM for tenant; if it fails or no key → pure OR-Tools
         llm = None
         try:
