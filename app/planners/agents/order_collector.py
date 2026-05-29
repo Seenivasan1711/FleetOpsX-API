@@ -41,15 +41,14 @@ class OrderCollectorAgent:
                 )
             ).scalars().all()
 
-            # Merge carry_forward_orders (E5): orders deferred from previous day
-            # are already injected into ctx["carry_forward_orders"] by the runner
-            # before Phase 1 starts. No extra DB query needed here.
-
             ctx["orders"] = list(orders)
             elapsed = int((time.monotonic() - t0) * 1000)
 
             high_priority = sum(1 for o in orders if o.priority in ("HIGH", "CRITICAL"))
             with_windows = sum(1 for o in orders if o.time_window_start)
+
+            # E5: carry_forward_orders pre-loaded by runner before Phase 1
+            cf_count = len(ctx.get("carry_forward_orders", []))
 
             log_entry = {
                 "step": self.name,
@@ -57,7 +56,8 @@ class OrderCollectorAgent:
                 "content": (
                     f"Loaded {len(orders)} pending orders for {plan_date}. "
                     f"{high_priority} high/critical priority, "
-                    f"{with_windows} with time windows."
+                    f"{with_windows} with time windows. "
+                    f"{cf_count} carry-forward note(s) from previous day."
                 ),
             }
             ctx["logs"].append(log_entry)
@@ -69,6 +69,7 @@ class OrderCollectorAgent:
                     "total_orders": len(orders),
                     "high_priority": high_priority,
                     "with_time_windows": with_windows,
+                    "carry_forward_notes": cf_count,
                 },
                 warnings=[],
                 elapsed_ms=elapsed,

@@ -1,5 +1,5 @@
 """
-Celery tasks — P4-E2 + P4-E4 + P4-E5.
+Celery tasks — P4-E2 + P4-E4 + P4-E5 + AI-1-E6.
 
 Tasks:
   - deliver_webhook_task   : POST event payload to partner URL, HMAC-signed
@@ -7,6 +7,7 @@ Tasks:
   - data_export_task       : ZIP all tenant data for GDPR export (P4-E4)
   - retention_sweep_task   : Soft-delete records older than retention_days (P4-E4)
   - scenario_run_task      : Run baseline + scenario planning async (P4-E5)
+  - run_planning_task      : AI-1 planning pipeline with failure classification + retry (E6)
 """
 import hashlib
 import hmac
@@ -224,6 +225,89 @@ def scenario_run_task(self, run_id: str, tenant_id: str) -> dict:
     except Exception as exc:
         logger.error("scenario_run_task: run=%s error=%s", run_id, exc, exc_info=True)
         return {"run_id": run_id, "status": "FAILED", "error": str(exc)}
+    finally:
+        db.close()
+
+
+# ─── AI-1-E6: Planning pipeline task (background + retry) ────────────────────
+
+@celery_app.task(
+    bind=True,
+    max_retries=3,
+    name="run_planning_task",
+)
+def run_planning_task(
+    self,
+    *,
+    tenant_id: str,
+    plan_date_str: str,
+    session_id: str = "",
+    run_id: str = "",
+    session_hints: list | None = None,
+) -> dict:
+    """
+    Execute the AI-1 planning pipeline in a Celery worker.
+
+    Transient failures (DB timeout, LLM rate-limit) are auto-retried up to 3×
+    with exponential backoff (30s → 2min → 10min).
+    Blocker failures (data error, ORTools infeasible) surface in PlanningRun
+    with status=BLOCKED_WAITING_USER and are not retried.
+    """
+    from datetime import date as _date
+    from app.core.db import SessionLocal
+    from app.planners.runner import run_planning
+    from app.planners.failure_classifier import classify_failure, TRANSIENT_BACKOFF
+
+    db = SessionLocal()
+    try:
+        plan_date = _date.fromisoformat(plan_date_str)
+        result = run_planning(
+            db=db,
+            tenant_id=tenant_id,
+            plan_date=plan_date,
+            session_id=session_id,
+            run_id=run_id,
+            session_hints=session_hints or [],
+        )
+        return result
+    except Exception as exc:
+        failure_type = classify_failure(exc)
+        retry_num = self.request.retries
+
+        if failure_type == "transient" and retry_num < self.max_retries:
+            backoff = TRANSIENT_BACKOFF[min(retry_num, len(TRANSIENT_BACKOFF) - 1)]
+            logger.warning(
+                "run_planning_task[%s]: transient failure, retry %d/%d in %ds: %s",
+                run_id[:8] if run_id else "?", retry_num + 1, self.max_retries, backoff, exc,
+            )
+            # Mark run as RETRYING before retry
+            try:
+                from app.core.db import SessionLocal as _SL
+                from app.models.planning_run import PlanningRun
+                from uuid import UUID as _UUID
+                db2 = _SL()
+                try:
+                    if run_id:
+                        run = db2.get(PlanningRun, _UUID(run_id))
+                        if run:
+                            run.status = "RETRYING"
+                            db2.commit()
+                finally:
+                    db2.close()
+            except Exception:
+                pass
+            raise self.retry(exc=exc, countdown=backoff)
+
+        logger.error(
+            "run_planning_task[%s]: %s failure (no retry): %s",
+            run_id[:8] if run_id else "?", failure_type, exc, exc_info=True,
+        )
+        return {
+            "status": "FAILED",
+            "run_id": run_id,
+            "error": str(exc),
+            "failure_type": failure_type,
+        }
     finally:
         db.close()
 

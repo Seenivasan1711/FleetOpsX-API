@@ -14,10 +14,13 @@ from app.planners.agents.order_collector import OrderCollectorAgent
 from app.planners.agents.driver_collector import DriverCollectorAgent
 from app.planners.agents.vehicle_collector import VehicleCollectorAgent
 from app.planners.agents.forecast_agent import ForecastAgent
+from app.planners.agents.constraint_validator import ConstraintValidatorAgent
 from app.planners.agents.ortools_optimizer import ORToolsOptimizerAgent
 from app.planners.agents.baseline_computer import BaselineComputerAgent
 from app.planners.agents.explain_agent import ExplainAgent
 from app.planners.agents.risk_scorer import RiskScorerAgent
+from app.planners.agents.learning_updater import LearningUpdaterAgent
+from app.planners.agents.carry_forward_agent import CarryForwardAgent
 
 # ─── Phase 1 — all run (conceptually) in parallel ─────────────────────────────
 PHASE_1_AGENTS = [
@@ -31,7 +34,7 @@ PHASE_1_AGENTS = [
 
 # ─── Phase 2 — sequential, each needs Phase 1 complete ────────────────────────
 PHASE_2_AGENTS = [
-    # E4: ConstraintValidatorAgent() — validates instructions against plan context
+    ConstraintValidatorAgent(),  # E4: validates instructions before optimization
     ORToolsOptimizerAgent(),
     BaselineComputerAgent(),   # runs after ORToolsOptimizer, needs plan_result + ctx["orders"]
 ]
@@ -40,6 +43,6 @@ PHASE_2_AGENTS = [
 PHASE_3_AGENTS = [
     ExplainAgent(),
     RiskScorerAgent(),
-    # E5: CarryForwardAgent() — add here once built
-    # E4: LearningUpdaterAgent() — add here once built
+    LearningUpdaterAgent(),   # E4: detect patterns, write PENDING_APPROVAL rows
+    CarryForwardAgent(),      # E5: create carry-forward notes for dropped orders
 ]

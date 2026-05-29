@@ -1,19 +1,19 @@
 """
-Planning execution runner — AI-1 E1.
+Planning execution runner — AI-1 E1 + E6.
 
 Orchestrates the 3-phase agent pipeline:
   Phase 1 (data collection) → Phase 2 (planning) → Phase 3 (reasoning)
   → Final aggregator
 
-Execution model for E1:
-  Phase 1 and Phase 3 agents run sequentially now, structured so they can
-  be switched to Celery group (E6) or asyncio.gather (E7) with minimal changes.
+Execution model:
+  Phase 1 and Phase 3 run sequentially (parallel in E7 via asyncio.gather).
   Phase 2 is always sequential (each agent depends on the previous).
 
-Failure handling (full version in E6):
-  - Agent failures in Phase 1: log and continue (partial data is better than no plan)
-  - Agent failures in Phase 2 (ORTools): raises — plan cannot proceed without a route result
-  - Agent failures in Phase 3: log and continue (plan is still usable without full reasoning)
+E6 additions:
+  - PlanningRun row created at start (separate DB conn — commits independently)
+  - Checkpoint appended after every agent completes
+  - Failure classification: transient → surface for Celery retry; blocker → BLOCKED_WAITING_USER
+  - resume_run(): re-dispatch with same params from last checkpoint
 """
 from __future__ import annotations
 
@@ -50,6 +50,7 @@ def run_planning(
     from app.core.llm_factory import get_llm_for_tenant
 
     run_id = run_id or str(uuid.uuid4())
+    hints = session_hints or []
 
     llm = None
     try:
@@ -64,11 +65,18 @@ def run_planning(
         llm=llm,
         run_id=run_id,
         session_id=session_id,
-        session_hints=session_hints or [],
+        session_hints=hints,
     )
 
-    # ── E4 hook: load instructions + learning patterns before Phase 1 ─────────
-    # (implemented in E4 — these stay empty lists for now)
+    # ── E6: create PlanningRun tracking row (separate conn — non-blocking) ────
+    _create_run(run_id, tenant_id, plan_date, session_id, hints)
+
+    # ── E4: load instructions + approved learning patterns before Phase 1 ─────
+    ctx["instructions"] = _load_instructions(db, tenant_id)
+    ctx["learning_patterns"] = _load_learning_patterns(db, tenant_id)
+
+    # ── E5: load carry-forward notes for today (from yesterday's dropped orders)
+    ctx["carry_forward_orders"] = _load_carry_forward_orders(db, tenant_id, plan_date)
 
     # ── Phase 1: data collection ──────────────────────────────────────────────
     logger.info("runner[%s] Phase 1 starting (%d agents)", run_id[:8], len(PHASE_1_AGENTS))
@@ -79,7 +87,12 @@ def run_planning(
     _run_phase(PHASE_2_AGENTS, ctx, phase=2, abort_on_failure=True)
 
     if not ctx["plan_result"]:
-        # ORTools failed and we aborted — return a safe empty result
+        _fail_run(run_id, {
+            "agent_name": "ORToolsOptimizerAgent", "phase": 2,
+            "error_type": "OptimizerFailure",
+            "message": "Optimizer failed — no plan generated.",
+            "is_transient": False,
+        })
         return _empty_result(plan_date, reason="Optimizer failed — no plan generated.")
 
     # ── Phase 3: reasoning (parallel in E7, sequential for now) ──────────────
@@ -90,6 +103,8 @@ def run_planning(
     result = _aggregate(ctx, run_id)
     _persist_savings(ctx, db)
     _persist_agent_logs(ctx, db)
+    _complete_run(run_id)
+
     logger.info(
         "runner[%s] complete — %d/%d orders, confidence=%.2f",
         run_id[:8],
@@ -100,7 +115,51 @@ def run_planning(
     return result
 
 
+def resume_run(*, db: Session, run_id: str, tenant_id: str) -> dict[str, Any]:
+    """
+    Resume a FAILED or BLOCKED_WAITING_USER run from the start.
+
+    Loads the original call params from PlanningRun.params and re-dispatches
+    via the Celery task so the retry path handles transient failure logic.
+    Returns the new run_id.
+    """
+    from uuid import UUID as _UUID
+    from sqlalchemy import select
+    from app.models.planning_run import PlanningRun
+
+    row = db.execute(
+        select(PlanningRun).where(
+            PlanningRun.id == _UUID(run_id),
+            PlanningRun.tenant_id == _UUID(tenant_id),
+        )
+    ).scalar_one_or_none()
+
+    if not row:
+        raise ValueError(f"PlanningRun {run_id} not found")
+    if row.status not in ("FAILED", "BLOCKED_WAITING_USER"):
+        raise ValueError(f"Run {run_id} has status {row.status} — only FAILED/BLOCKED runs can be resumed")
+
+    params = row.params or {}
+    new_run_id = str(uuid.uuid4())
+
+    from app.workers.tasks import run_planning_task
+    run_planning_task.apply_async(
+        kwargs={
+            "tenant_id": params.get("tenant_id", tenant_id),
+            "plan_date_str": params.get("plan_date", str(row.plan_date)),
+            "session_id": params.get("session_id", ""),
+            "run_id": new_run_id,
+            "session_hints": params.get("session_hints", []),
+        }
+    )
+    return {"run_id": new_run_id, "resumed_from": run_id, "status": "IN_PROGRESS"}
+
+
 # ─── Phase executor ────────────────────────────────────────────────────────────
+
+_PHASE_START_PCT = {1: 0.0,  2: 35.0, 3: 80.0}
+_PHASE_WEIGHT_PCT = {1: 35.0, 2: 45.0, 3: 20.0}
+
 
 def _run_phase(
     agents: list[PlanningAgent],
@@ -114,15 +173,35 @@ def _run_phase(
 
     abort_on_failure=True: if any agent returns status="failed", stop the phase.
     abort_on_failure=False: continue even if an agent fails (partial data).
+    E6: checkpoints written after every agent; failure classified on abort.
+    E7: agent_started / agent_completed events published to Redis.
     """
-    for agent in agents:
+    from app.planners.event_publisher import publish_event
+
+    run_id = ctx.get("run_id", "")
+    n = len(agents)
+    start_pct = _PHASE_START_PCT.get(phase, 0.0)
+    weight_pct = _PHASE_WEIGHT_PCT.get(phase, 10.0)
+
+    publish_event(run_id, "phase_started", {"phase": phase, "agent_count": n})
+
+    for i, agent in enumerate(agents):
         t0 = time.monotonic()
         logger.info("runner Phase %d → %s starting", phase, agent.name)
+        publish_event(run_id, "agent_started", {
+            "agent_name": agent.name,
+            "phase": phase,
+            "progress_pct": round(start_pct + i / n * weight_pct, 1),
+        })
+        _update_run_agent(run_id, phase, agent.name)
+
+        raw_exc: Exception | None = None
         try:
             result: AgentResult = agent.run(ctx)
         except Exception as exc:
             elapsed = int((time.monotonic() - t0) * 1000)
             logger.exception("runner Phase %d → %s raised unexpectedly: %s", phase, agent.name, exc)
+            raw_exc = exc
             result = AgentResult(
                 agent_name=agent.name,
                 status="failed",
@@ -133,16 +212,39 @@ def _run_phase(
             )
 
         ctx["agent_outputs"][agent.name] = result
+        progress_pct = round(start_pct + (i + 1) / n * weight_pct, 1)
+        _checkpoint_agent(run_id, result, phase, progress_pct)
+        publish_event(run_id, "agent_completed", {
+            "agent_name": result["agent_name"],
+            "phase": phase,
+            "status": result["status"],
+            "elapsed_ms": result["elapsed_ms"],
+            "output_preview": _preview(result["output"]),
+            "warnings": result.get("warnings", []),
+            "progress_pct": progress_pct,
+        })
+
         logger.info(
             "runner Phase %d → %s %s (%dms)",
             phase, agent.name, result["status"], result["elapsed_ms"],
         )
 
         if result["status"] == "failed" and abort_on_failure:
-            logger.error(
-                "runner Phase %d aborted after %s failure", phase, agent.name
-            )
+            logger.error("runner Phase %d aborted after %s failure", phase, agent.name)
+            from app.planners.failure_classifier import classify_failure
+            failure_type = classify_failure(raw_exc) if raw_exc else "blocker"
+            _fail_run(run_id, {
+                "agent_name": agent.name,
+                "phase": phase,
+                "error_type": type(raw_exc).__name__ if raw_exc else "AgentFailure",
+                "message": str(raw_exc) if raw_exc else result["warnings"][0] if result["warnings"] else "Agent returned failed status",
+                "is_transient": failure_type == "transient",
+            })
+            if raw_exc and failure_type == "transient":
+                raise raw_exc  # bubble up so Celery task can retry
             break
+
+    publish_event(run_id, "phase_completed", {"phase": phase})
 
 
 # ─── Aggregator ────────────────────────────────────────────────────────────────
@@ -291,6 +393,248 @@ def _resolve_provider(db: Session, tenant_id: str) -> str | None:
         return row.config_value if row else None
     except Exception:
         return None
+
+
+# ─── E4 loaders ───────────────────────────────────────────────────────────────
+
+def _load_instructions(db: Session, tenant_id: str) -> list[str]:
+    """Return rule_text for all active planning instructions, ordered by priority."""
+    try:
+        from uuid import UUID
+        from sqlalchemy import select
+        from app.models.planning_instruction import PlanningInstruction
+
+        rows = db.execute(
+            select(PlanningInstruction.rule_text)
+            .where(
+                PlanningInstruction.tenant_id == UUID(tenant_id),
+                PlanningInstruction.is_active == True,
+            )
+            .order_by(PlanningInstruction.priority, PlanningInstruction.created_at)
+        ).scalars().all()
+        return list(rows)
+    except Exception as exc:
+        logger.warning("runner: failed to load planning instructions: %s", exc)
+        return []
+
+
+def _load_learning_patterns(db: Session, tenant_id: str) -> list[dict]:
+    """Return APPROVED learning patterns as plain dicts for ctx injection."""
+    try:
+        from uuid import UUID
+        from sqlalchemy import select
+        from app.models.planning_learning import PlanningLearning
+
+        rows = db.execute(
+            select(PlanningLearning)
+            .where(
+                PlanningLearning.tenant_id == UUID(tenant_id),
+                PlanningLearning.status == "APPROVED",
+            )
+            .order_by(PlanningLearning.created_at.desc())
+        ).scalars().all()
+        return [
+            {
+                "pattern_type": r.pattern_type,
+                "pattern_text": r.pattern_text,
+                "trigger_conditions": r.trigger_conditions,
+            }
+            for r in rows
+        ]
+    except Exception as exc:
+        logger.warning("runner: failed to load learning patterns: %s", exc)
+        return []
+
+
+# ─── E6 run tracking (separate DB connections — commits are independent) ───────
+
+def _create_run(run_id: str, tenant_id: str, plan_date, session_id: str, hints: list[str]) -> None:
+    if not run_id:
+        return
+    try:
+        from datetime import datetime
+        from uuid import UUID as _UUID
+        from app.core.db import SessionLocal
+        from app.models.planning_run import PlanningRun
+        from app.planners.event_publisher import publish_event
+
+        db2 = SessionLocal()
+        try:
+            db2.add(PlanningRun(
+                id=_UUID(run_id),
+                tenant_id=_UUID(tenant_id),
+                session_id=_UUID(session_id) if session_id else None,
+                plan_date=plan_date,
+                status="IN_PROGRESS",
+                current_phase=0,
+                checkpoints=[],
+                params={
+                    "tenant_id": tenant_id,
+                    "plan_date": str(plan_date),
+                    "session_id": session_id,
+                    "session_hints": hints,
+                },
+                started_at=datetime.utcnow(),
+            ))
+            db2.commit()
+        finally:
+            db2.close()
+
+        publish_event(run_id, "run_started", {
+            "tenant_id": tenant_id,
+            "plan_date": str(plan_date),
+            "session_id": session_id,
+        })
+    except Exception as exc:
+        logger.debug("E6 _create_run failed (non-fatal): %s", exc)
+
+
+def _update_run_agent(run_id: str, phase: int, agent_name: str) -> None:
+    if not run_id:
+        return
+    try:
+        from uuid import UUID as _UUID
+        from app.core.db import SessionLocal
+        from app.models.planning_run import PlanningRun
+
+        db2 = SessionLocal()
+        try:
+            run = db2.get(PlanningRun, _UUID(run_id))
+            if run:
+                run.current_phase = phase
+                run.current_agent = agent_name
+                db2.commit()
+        finally:
+            db2.close()
+    except Exception as exc:
+        logger.debug("E6 _update_run_agent failed (non-fatal): %s", exc)
+
+
+def _checkpoint_agent(run_id: str, result: AgentResult, phase: int, progress_pct: float = 0.0) -> None:
+    if not run_id:
+        return
+    try:
+        from datetime import datetime
+        from uuid import UUID as _UUID
+        from app.core.db import SessionLocal
+        from app.models.planning_run import PlanningRun
+
+        db2 = SessionLocal()
+        try:
+            run = db2.get(PlanningRun, _UUID(run_id))
+            if run:
+                checkpoints = list(run.checkpoints or [])
+                checkpoints.append({
+                    "agent_name": result["agent_name"],
+                    "phase": phase,
+                    "status": result["status"],
+                    "elapsed_ms": result["elapsed_ms"],
+                    "output_preview": _preview(result["output"]),
+                    "warnings": result.get("warnings", []),
+                    "progress_pct": progress_pct,
+                    "completed_at": datetime.utcnow().isoformat(),
+                })
+                run.checkpoints = checkpoints
+                run.current_agent = result["agent_name"]
+                db2.commit()
+        finally:
+            db2.close()
+    except Exception as exc:
+        logger.debug("E6 _checkpoint_agent failed (non-fatal): %s", exc)
+
+
+def _complete_run(run_id: str) -> None:
+    if not run_id:
+        return
+    try:
+        from datetime import datetime
+        from uuid import UUID as _UUID
+        from app.core.db import SessionLocal
+        from app.models.planning_run import PlanningRun
+        from app.planners.event_publisher import publish_event
+
+        db2 = SessionLocal()
+        try:
+            run = db2.get(PlanningRun, _UUID(run_id))
+            if run:
+                run.status = "COMPLETED"
+                run.completed_at = datetime.utcnow()
+                db2.commit()
+        finally:
+            db2.close()
+
+        publish_event(run_id, "run_completed", {"progress_pct": 100.0})
+    except Exception as exc:
+        logger.debug("E6 _complete_run failed (non-fatal): %s", exc)
+
+
+def _fail_run(run_id: str, error_info: dict) -> None:
+    if not run_id:
+        return
+    try:
+        from datetime import datetime
+        from uuid import UUID as _UUID
+        from app.core.db import SessionLocal
+        from app.models.planning_run import PlanningRun
+        from app.planners.event_publisher import publish_event
+
+        new_status = "BLOCKED_WAITING_USER" if not error_info.get("is_transient") else "FAILED"
+        db2 = SessionLocal()
+        try:
+            run = db2.get(PlanningRun, _UUID(run_id))
+            if run:
+                run.status = new_status
+                run.error_info = error_info
+                run.completed_at = datetime.utcnow()
+                db2.commit()
+        finally:
+            db2.close()
+
+        publish_event(run_id, "run_failed", {
+            "status": new_status,
+            "error_type": error_info.get("error_type"),
+            "message": error_info.get("message"),
+            "is_transient": error_info.get("is_transient", False),
+        })
+    except Exception as exc:
+        logger.debug("E6 _fail_run failed (non-fatal): %s", exc)
+
+
+def _load_carry_forward_orders(db: Session, tenant_id: str, plan_date) -> list[dict]:
+    """Load PENDING carry-forward notes targeted at plan_date (yesterday's dropped orders)."""
+    try:
+        from uuid import UUID
+        from sqlalchemy import select
+        from sqlalchemy.orm import joinedload
+        from app.models.carry_forward_note import CarryForwardNote
+
+        rows = db.execute(
+            select(CarryForwardNote)
+            .where(
+                CarryForwardNote.tenant_id == UUID(tenant_id),
+                CarryForwardNote.to_date == plan_date,
+                CarryForwardNote.status == "PENDING",
+            )
+            .options(joinedload(CarryForwardNote.suggested_driver))
+        ).scalars().all()
+
+        result = []
+        for r in rows:
+            driver_name = None
+            if r.suggested_driver:
+                driver_name = getattr(r.suggested_driver, "full_name", None)
+            result.append({
+                "order_id": str(r.order_id),
+                "from_date": str(r.from_date),
+                "to_date": str(r.to_date),
+                "suggested_driver_id": str(r.suggested_driver_id) if r.suggested_driver_id else None,
+                "suggested_driver_name": driver_name,
+                "context_note": r.context_note,
+            })
+        return result
+    except Exception as exc:
+        logger.warning("runner: failed to load carry-forward orders: %s", exc)
+        return []
 
 
 # ─── Helpers ────────────────────────────────────────────────────────────────────

@@ -92,6 +92,22 @@ def _run_retention_sweep() -> None:
     logger.info("Retention sweep task queued")
 
 
+# ─── Planning session cutoff lock (AI-1 E3) ──────────────────────────────────
+
+def _lock_expired_sessions() -> None:
+    """Lock OPEN planning sessions whose cutoff_at has passed (every 30 min)."""
+    from app.services.planning_session_service import lock_expired_sessions
+    db: Session = SessionLocal()
+    try:
+        count = lock_expired_sessions(db)
+        if count:
+            logger.info("lock_expired_sessions: %d session(s) locked past cutoff", count)
+    except Exception as exc:
+        logger.error("lock_expired_sessions error: %s", exc, exc_info=True)
+    finally:
+        db.close()
+
+
 # ─── DB route cache refresh job (P4-E1) ──────────────────────────────────────
 
 def _refresh_db_routes() -> None:
@@ -146,11 +162,18 @@ def start_scheduler() -> None:
         replace_existing=True,
         misfire_grace_time=3600,
     )
+    scheduler.add_job(
+        _lock_expired_sessions,
+        trigger="interval",
+        minutes=30,
+        id="lock_expired_sessions",
+        replace_existing=True,
+    )
     scheduler.start()
     logger.info(
         "APScheduler started — daily ETL @ 01:00 UTC, monitor scan every 5 min (07–20 UTC), "
         "DB route refresh every 60s, marketplace match every 5 min (06–22 UTC), "
-        "retention sweep @ 02:00 UTC (P4-E4)"
+        "retention sweep @ 02:00 UTC (P4-E4), lock expired sessions every 30 min (AI-1 E3)"
     )
 
 

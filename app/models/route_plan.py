@@ -1,6 +1,6 @@
 import uuid
 from sqlalchemy import Column, Date, String, Integer, Float, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 from app.models.base import Base, TimestampMixin, TenantMixin
 
@@ -21,8 +21,27 @@ class RoutePlan(Base, TimestampMixin, TenantMixin):
     baseline_hrs = Column(Float, nullable=True)
     km_saved     = Column(Float, nullable=True)
     hrs_saved    = Column(Float, nullable=True)
+    # AI-1 E3: iterative planning session versioning
+    session_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("planning_sessions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    version_number = Column(Integer, nullable=True, default=1)
+    parent_plan_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("route_plans.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    round_hints = Column(JSONB, nullable=True)
 
     routes = relationship("Route", back_populates="plan", cascade="all, delete-orphan")
+    session = relationship(
+        "PlanningSession",
+        foreign_keys=[session_id],
+        back_populates="plans",
+    )
 
 
 class Route(Base, TimestampMixin, TenantMixin):
